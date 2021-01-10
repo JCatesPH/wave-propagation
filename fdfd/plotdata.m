@@ -40,7 +40,7 @@ for i = 1:length(omegs)
   plot([z(sfr),z(sfr)], [-lims,lims], '--k', "linewidth", 2.5)
   plot([z(p),z(p)], [-lims,lims], '-k', "linewidth", 2.5)
   plot([z(q),z(q)], [-lims,lims], '-k', "linewidth", 2.5)
-  plot(z,Q(1:floor(end/2),1:floor(end/2)) * real(fsrc(z))', "-r;Re[f(z)];");
+  %plot(z,Q(1:floor(end/2),1:floor(end/2)) * real(fsrc(z))', "-r;Re[f(z)];");
   legend("hide");
   
   freqtext = sprintf("%.2e", omeg);
