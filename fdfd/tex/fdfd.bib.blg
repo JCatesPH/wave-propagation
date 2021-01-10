@@ -1,0 +1,5 @@
+[0] Config.pm:304> INFO - This is Biber 2.14 (beta)
+[0] Config.pm:307> INFO - Logfile is 'fdfd.bib.blg'
+[73] biber:322> INFO - === Fri Jan  1, 2021, 18:36:37
+[140] Utils.pm:309> ERROR - Cannot find 'fdfd.bib.bcf'!
+[140] Biber.pm:132> INFO - ERRORS: 1

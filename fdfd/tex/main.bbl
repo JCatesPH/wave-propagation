@@ -1,0 +1,48 @@
+% $ biblatex auxiliary file $
+% $ biblatex bbl format version 3.1 $
+% Do not modify the above lines!
+%
+% This is an auxiliary file used by the 'biblatex' package.
+% This file may safely be deleted. It will be recreated by
+% biber as required.
+%
+\begingroup
+\makeatletter
+\@ifundefined{ver@biblatex.sty}
+  {\@latex@error
+     {Missing 'biblatex' package}
+     {The bibliography requires the 'biblatex' package.}
+      \aftergroup\endinput}
+  {}
+\endgroup
+
+
+\refsection{0}
+  \datalist[entry]{nty/global//global/global}
+    \entry{Lang}{report}{}
+      \name{author}{1}{}{%
+        {{hash=2b9a250da416344b243a43c404913dee}{%
+           family={Lang},
+           familyi={L\bibinitperiod},
+           given={Hans-Dieter},
+           giveni={H\bibinithyphendelim D\bibinitperiod}}}%
+      }
+      \strng{namehash}{2b9a250da416344b243a43c404913dee}
+      \strng{fullhash}{2b9a250da416344b243a43c404913dee}
+      \strng{bibnamehash}{2b9a250da416344b243a43c404913dee}
+      \strng{authorbibnamehash}{2b9a250da416344b243a43c404913dee}
+      \strng{authornamehash}{2b9a250da416344b243a43c404913dee}
+      \strng{authorfullhash}{2b9a250da416344b243a43c404913dee}
+      \field{sortinit}{L}
+      \field{sortinithash}{dad3efd0836470093a7b4a7bb756eb8c}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{abstract}{The finite-difference frequency-domain (FDFD) method is introduced and implemented in 1D, 2D and 2.5D for both driven mode and eigenmode analysis. Simulation results and execution time performances are presented and compared to those obtained using the well-known FDTD method.}
+      \field{title}{{The Finite-Difference Frequency-Domain Method}}
+      \field{type}{techreport}
+      \keyw{FDFD,Index Terms-finite-difference,eigenmode analysis,frequency-domain,resonator modes}
+    \endentry
+  \enddatalist
+\endrefsection
+\endinput
+
