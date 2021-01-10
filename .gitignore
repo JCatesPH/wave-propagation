@@ -30,3 +30,6 @@
 *.exe
 *.out
 *.app
+
+# Octave files
+*/octave-workspace
