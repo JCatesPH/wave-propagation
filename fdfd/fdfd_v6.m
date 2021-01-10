@@ -110,7 +110,7 @@ for i = 1:Nf
   text(z(p+10), -0.9, '\epsilon = \epsilon(\omega)')
   text(z(q+10), -0.9, '\epsilon = \epsilon_0')
   
-  file_text=sprintf("figs/output%d.png",i);
+  file_text=sprintf("figs/output%d.pdf",i);
   saveas (gca, file_text);
   %system ("wslview figs/test.png")
 endfor
@@ -119,11 +119,11 @@ clf;
 plot(omegs, Gamma);
 xlabel('\omega');
 ylabel('|\Gamma|');
-print("figs/reflection.png");
+print("figs/reflection.tikz");
 
 clf;
 plot(z, sz);
 xlim([z(1) z(end)]);
 xlabel('z [m]');
 ylabel('s_z');
-print("figs/sig.png");
+print("figs/sig.pdf");
