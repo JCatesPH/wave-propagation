@@ -11,7 +11,7 @@ ylabel('|\Gamma|');
 print("figs/reflection.png");
 
 clf;
-plot(Sz(:,1), Sz(:,2));
+plotyy(Sz(:,1), real(Sz(:,2)), Sz(:,1), imag(Sz(:,2)));
 xlim([Sz(1,1) Sz(end,1)]);
 xlabel('z [m]');
 ylabel('s_z');
