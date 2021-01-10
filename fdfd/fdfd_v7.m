@@ -12,7 +12,7 @@ mu0 = 1.25663706212e-6;
 
 % Domain parameters
 nz = 25000;
-dz = 5e-12;
+dz = 1e-11;
 z = [1:nz] .* dz;
 
 % Lorentz media parameters
@@ -66,7 +66,7 @@ for i = 1:Nf
   omeg = omegs(i);
   %eps1 = eps(omeg);
   epsr0 = 1;
-  epsr1 = 2;
+  epsr1 = 1;
   epsr2 = 1;
   eps_xx = sparse(diag([sz(1:p) .* epsr0 .* ones(p,1); 
             sz(p+1:q) .* epsr1 .* ones(q-p,1); 
