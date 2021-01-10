@@ -46,7 +46,7 @@ for i = 1:length(omegs)
   freqtext = sprintf("%.2e", omeg);
   text(0.025, 0.05, ['\omega = ' freqtext], "units", "normalized");
   text(z(sfr+10), -0.9, '\epsilon = \epsilon_0');
-  text(z(p+10), -0.9, '\epsilon = 2\epsilon_0')
+  text(z(p+10), -0.9, '\epsilon = 5\epsilon_0')
   text(z(q+10), -0.9, '\epsilon = \epsilon_0')
   
   file_text=sprintf("figs/output%d.png",i);

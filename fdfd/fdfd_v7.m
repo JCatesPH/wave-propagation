@@ -67,7 +67,7 @@ for i = 1:Nf
   %eps1 = eps(omeg);
   epsr0 = 1;
   epsr1 = 5;
-  epsr2 = 1;
+  epsr2 = 5;
   eps_xx = sparse(diag([sz(1:p) .* epsr0 .* ones(p,1); 
             sz(p+1:q) .* epsr1 .* ones(q-p,1); 
             sz(q+1:end) .* epsr2 .* ones(r,1)]));
