@@ -26,7 +26,7 @@ eps = @(omeg) epsinf .+ (epss .- epsinf) .* omeg0 .^2 ./ (omeg0 .^2 .+ 2i .* ome
 %       Now from Rumpf (2011)
 sz = ones(nz,1); % initialize conductivity array
 d = 1500; % width of PML layer
-m = 2; % polynomial order for grading sigma array (pp 292, Taflove)
+m = 3; % polynomial order for grading sigma array (pp 292, Taflove)
 neta = sqrt(mu0/eps0); % Impedance
 sigmax = 1;
 smax = 5;
@@ -66,7 +66,7 @@ for i = 1:Nf
   omeg = omegs(i);
   %eps1 = eps(omeg);
   epsr0 = 1;
-  epsr1 = 1;
+  epsr1 = 2;
   epsr2 = 1;
   eps_xx = sparse(diag([sz(1:p) .* epsr0 .* ones(p,1); 
             sz(p+1:q) .* epsr1 .* ones(q-p,1); 
