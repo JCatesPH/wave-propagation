@@ -23,14 +23,14 @@ omeg0 = 4e16;
 eps = @(omeg) epsinf .+ (epss .- epsinf) .* omeg0 .^2 ./ (omeg0 .^2 .+ 2i .* omeg .* delta .- omeg.^2);
 
 %---- PML absorbing boundary condition----
-%       Now from Rumpf (2011)
+%       Now from Rumpf (2012)
 sz = ones(nz,1); % initialize conductivity array
-d = 1500; % width of PML layer
+d = 50; % width of PML layer
 m = 3; % polynomial order for grading sigma array (pp 292, Taflove)
 neta = sqrt(mu0/eps0); % Impedance
 sigmax = 1;
 smax = 5;
-sz0 = ((1:d) ./ d) .^ m .* smax .+ 1;
+sz0 = smax .* ((1:d) ./ d) .^ m .+ 1;
 sigp = sigmax .* (sin(pi .* (1:d) ./ (2 .* d))) .^ 2;
 sz(nz-d+1:nz) = sz0 .* (1 .- 1i .* neta .* sigp);
 sz(1:d) = fliplr(sz0 .* (1 .- 1i .* neta .* sigp));
@@ -61,13 +61,12 @@ p = floor(0.5 * nz);
 q = floor(0.75 * nz);
 r = nz - q;
 
-
 for i = 1:Nf
   omeg = omegs(i);
   %eps1 = eps(omeg);
   epsr0 = 1;
-  epsr1 = 5;
-  epsr2 = 5;
+  epsr1 = 1;
+  epsr2 = 1;
   eps_xx = sparse(diag([sz(1:p) .* epsr0 .* ones(p,1); 
             sz(p+1:q) .* epsr1 .* ones(q-p,1); 
             sz(q+1:end) .* epsr2 .* ones(r,1)]));
@@ -84,7 +83,7 @@ for i = 1:Nf
   bx = sparse(Qx*Ax - Ax*Qx) * fsrc(z)';
   % Solve system
   ex = Ax \ bx;
-  Vr = abs(max(ex(d+20:sfr-10)));
+  Vr = real(max(ex(d+20:sfr-10)));
   %VSWR = (1 + Vr) / (1 - Vr);
   %Gamma(i) = (VSWR - 1) / (VSWR + 1);
   Gamma(i) = Vr;
