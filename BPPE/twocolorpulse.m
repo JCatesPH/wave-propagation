@@ -27,5 +27,5 @@ function E = twocolorpulse (t, x, I0, wx, taup, omeg0, R, phi)
   % R is relative strength of fundamental and second harmonic
   c = 3e8;
   eps0 = 8.85e-12;
-  E = sqrt(2*I0/(c*eps0)) * exp(-2*log(2)* (x./ wx).^2) .* ( sqrt(1-R) * exp(-2*log(2)* (t./ taup).^2) .* cos(omeg0*t) .+ sqrt(R) * exp(-8*log(2)* (t./ taup).^2) .* cos(2*omeg0 .* t .+ phi));
+  E = sqrt(2*I0/(c*eps0)) * exp(-2*log(2)* (x./ wx).^2) .* ( sqrt(1-R) .* exp(-2*log(2)* (t./ taup).^2) .* cos(omeg0 .*t) .+ sqrt(R) * exp(-8*log(2)* (t./ taup).^2) .* cos(2*omeg0 .* t .+ phi));
 endfunction

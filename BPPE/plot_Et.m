@@ -24,18 +24,18 @@
 ## Created: 2021-01-13
 
 function f = plot_Et (E, t, omeg, filename)
-  Ew = flipud(fftshift(fft(E)));
-  graphics_toolkit gnuplot;
-  f = figure('visible','off');
+  Ew = abs(fft(E));
+  %graphics_toolkit gnuplot;
+  %f = figure('visible','off');
   subplot(2, 1, 1);
-    plot(t*1e9, real(E));
-    xlabel("t [ns]");
-    ylabel("E(t)");
-    title("Re[E(t)]");
+    plot(t*1e15, real(E));
+    xlabel("t [fs]");
+    ylabel("E(z_0,t)");
+    %title("E(z_0,t)");
    subplot(2, 1, 2);
-    plot(omeg*1e-9, real(Ew));
-    xlabel('\omega [1/ns]');
-    ylabel('E(\omega)');
-    title('Re[E(\omega)]');
+    plot(omeg*1e-12, Ew(2:end/2+1).^2);
+    xlabel('\omega [THz]');
+    ylabel('|E(z_0,\omega)|^2');
+    %title('|E(z_0,\omega)|^2');
   print(["figs/" filename]);  
 endfunction
