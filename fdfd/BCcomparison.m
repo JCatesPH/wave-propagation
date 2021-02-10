@@ -1,17 +1,23 @@
 %% Compares the Floquet and basic periodic boundary conditions
 %   Uses new function for FDFD and param structure
-setparam2D
+setparam2D;
 
 %% Adjust parameters for case of Floquet and basic periodic BC
+param2D.lx = 80;
+param2D.ly = 80;
+param2D.bufsize = 240;
+param2D.Nx = 1000 + param2D.Lx + param2D.bufsize;
+param2D.Ny = 1001;
+
 paramsF = param2D
 paramsP = param2D;
 paramsP.Floquet = 0
 
 %% Set the omeg sampling and and angle of incidence
 Nf = 5;
-Na = 15;
+Na = 5;
 omegs = linspace(430e12, 750e12, Nf);
-thetai = linspace(0.0, pi/3, Na)';
+thetai = linspace(0.0, 0.4*pi, Na)';
 
 RF = zeros(Na, Nf);
 TF = zeros(Na, Nf);
@@ -20,10 +26,11 @@ TP = zeros(Na, Nf);
 %% Test
 for m = 1:Na
     for n = 1:Nf
-        pathhead = sprintf("testfun/Floq_om%02d%02d_", m, n);
+        pathhead = sprintf("bigtest/Floq_om%02d%02d_", m, n);
         [RF(m,n),TF(m,n)] = fdfd2D(omegs(n), thetai(m), paramsF, pathhead);
-        pathhead = sprintf("testfun/Peri_om%02d%02d_", m, n);
+        pathhead = sprintf("bigtest/Peri_om%02d%02d_", m, n);
         [RP(m,n),TP(m,n)] = fdfd2D(omegs(n), thetai(m), paramsP, pathhead);
+	sprintf("Both BC with omeg = %f and thetai = %f complete.", omegs(n), thetai(m))
     end
 end
 
@@ -61,4 +68,4 @@ EcP_relerr = abs(EconsP - 1)
 
 %% Save the relevant data
 finaldat = table(thetai, RF_mean, RP_mean, R_Fres, EcF_relerr, EcP_relerr, RF_relerr, RP_relerr, TF_relerr, TP_relerr)
-writetable(finaldat, "testfun/RefDatFloqComp.txt");
+writetable(finaldat, "bigtest/RefDatFloqComp.txt");

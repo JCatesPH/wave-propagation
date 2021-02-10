@@ -117,15 +117,16 @@ b = (Qxy*Ae - Ae*Qxy) * fsrc;
 ez = Ae \ b;
 Ez = reshape(ez, params.Nx, params.Ny);
 [R, T] = reflectivity(Ez(params.Rpind,:), Ez(params.Tpind,:), k0, ki_x, ki_y, y, params.Ny, Wy, 1, sqrt(params.epsr));
-
+sizeR = size(R);
+sizeT = size(T);
 efile = strcat(dir, "Ez.csv");
-writematrix(real(ez), efile);
+dlmwrite(efile, real(ez));
 permfile = strcat(dir, "eps.csv");
-writematrix(eps_vec, permfile);
+dlmwrite(permfile, eps_vec);
 xfile = strcat(dir, "X.csv");
-writematrix(x, xfile);
+dlmwrite(xfile, x);
 yfile = strcat(dir, "Y.csv");
-writematrix(y, yfile);
+dlmwrite(yfile, y);
 
 end
 
