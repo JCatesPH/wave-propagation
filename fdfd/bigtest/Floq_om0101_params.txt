@@ -1,2 +1,0 @@
-lx,ly,Lx,bufsize,Nx,Ny,Rpind,Tpind,sx_m,sx_R,sx_smax,epsr,mur,Floquet,omeg,thetai
-80,80,40,240,1280,1001,45,575,3,1e-09,5,2.25,1,1,430000000000000,0
