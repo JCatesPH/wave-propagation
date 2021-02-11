@@ -3,20 +3,27 @@
 setparam2D;
 
 %% Adjust parameters for case of Floquet and basic periodic BC
-param2D.lx = 100;
-param2D.ly = 100;
-param2D.Lx = 50;
-param2D.bufsize = 350;
-param2D.Nx = 1000 + param2D.Lx + param2D.bufsize;
-param2D.Ny = 1001;
+param2D.lx = 50;
+param2D.ly = 50;
+param2D.Lx = 40;
+param2D.bufsize = 310;
+param2D.Nx = 600 + param2D.Lx + param2D.bufsize;
+param2D.Ny = 601;
+% Set the index where reflectance and transmittance are calculated
+param2D.Rpind = param2D.lx;
+param2D.Tpind = param2D.Nx - param2D.lx;
 
 paramsF = param2D
+
 paramsP = param2D;
 paramsP.Floquet = 0
 
+paramsF2 = param2D;
+paramsF2.Floquet = 2
+
 %% Set the omeg sampling and and angle of incidence
-Nf = 3;
-Na = 15;
+Nf = 2;
+Na = 3;
 omegs = linspace(430e12, 750e12, Nf);
 thetai = linspace(0.0, 0.35*pi, Na)';
 
@@ -29,8 +36,8 @@ for m = 1:Na
     for n = 1:Nf
         pathhead = sprintf("bigtest/Floq_om%02dth%02d_", n, m);
         [RF(m,n),TF(m,n)] = fdfd2D(omegs(n), thetai(m), paramsF, pathhead);
-        pathhead = sprintf("bigtest/Peri_om%02dth%02d_", n, m);
-        [RP(m,n),TP(m,n)] = fdfd2D(omegs(n), thetai(m), paramsP, pathhead);
+        pathhead = sprintf("bigtest/Floq2_om%02dth%02d_", n, m);
+        [RP(m,n),TP(m,n)] = fdfd2D(omegs(n), thetai(m), paramsF2, pathhead);
 	sprintf("Both BC with omeg = %f and thetai = %f complete. (%d,%d)", omegs(n), thetai(m), m, n)
     end
 end
