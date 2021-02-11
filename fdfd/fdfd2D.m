@@ -80,13 +80,17 @@ mu_yy = spdiags(Sx, 0, Nc, Nc);
 % ------------------------
 % % Choose grid based on wavelengths
 %
-dx = lamb0 / (params.lx * max(sqrt([epsr0, params.epsr])));
-dy = lamb0 / (params.ly * max(sqrt([epsr0, params.epsr])));
+%dx = lamb0 / (params.lx * max(sqrt([epsr0, params.epsr])));
+%dy = lamb0 / (params.ly * max(sqrt([epsr0, params.epsr])));
+dx = lamb0 / params.lx;
+dy = lamb0 / params.ly;
 x = (1:params.Nx)' .* dx;
 y = (1:params.Ny)' .* dy;
 Wy = params.Ny * dy; % Width of y for periodic BC and reflections
-refp = floor(lambx / dx)
-trsp = params.Nx - mod(params.Nx, refp)
+%refp = floor(lambx / dx)
+refp = params.lx;
+%trsp = params.Nx - mod(params.Nx, refp)
+trsp = params.Nx - params.lx;
 
 % ------------------------
 % % Difference matrices
@@ -119,7 +123,7 @@ b = (Qxy*Ae - Ae*Qxy) * fsrc;
 ez = Ae \ b;
 Ez = reshape(ez, params.Nx, params.Ny);
 %[R, T] = reflectivity(Ez(params.Rpind,:), Ez(params.Tpind,:), k0, ki_x, ki_y, y, params.Ny, Wy, 1, sqrt(params.epsr));
-[R, T] = reflectivity(Ez(refp,:), Ez(trsp, :), k0, ki_x, ki_y, y, params.Ny, Wy, 1, sqrt(params.epsr));
+[R, T] = reflectivity(Ez(refp,:), Ez(trsp, :), k0, ki_x, ki_y, y, params.Ny, Wy, 1, sqrt(params.epsr))
 sizeR = size(R);
 sizeT = size(T);
 efile = strcat(dir, "Ez.csv");

@@ -3,9 +3,10 @@
 setparam2D;
 
 %% Adjust parameters for case of Floquet and basic periodic BC
-param2D.lx = 80;
-param2D.ly = 80;
-param2D.bufsize = 360;
+param2D.lx = 100;
+param2D.ly = 100;
+param2D.Lx = 50;
+param2D.bufsize = 350;
 param2D.Nx = 1000 + param2D.Lx + param2D.bufsize;
 param2D.Ny = 1001;
 
@@ -15,9 +16,9 @@ paramsP.Floquet = 0
 
 %% Set the omeg sampling and and angle of incidence
 Nf = 3;
-Na = 3;
+Na = 15;
 omegs = linspace(430e12, 750e12, Nf);
-thetai = linspace(0.0, 0.1, Na)';
+thetai = linspace(0.0, 0.35*pi, Na)';
 
 RF = zeros(Na, Nf);
 TF = zeros(Na, Nf);
