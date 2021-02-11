@@ -62,7 +62,7 @@ lamb0 = 2*pi*c0 ./ omeg;
 k0 = omeg ./ c0;
 ki_x = k0 * cos(thetai);
 ki_y = k0 * sin(thetai);
-
+lambx = lamb0*cos(thetai);
 
 % ------------------------
 % % Compute tensors for perms
@@ -85,6 +85,8 @@ dy = lamb0 / (params.ly * max(sqrt([epsr0, params.epsr])));
 x = (1:params.Nx)' .* dx;
 y = (1:params.Ny)' .* dy;
 Wy = params.Ny * dy; % Width of y for periodic BC and reflections
+refp = floor(lambx / dx)
+trsp = params.Nx - mod(params.Nx, refp)
 
 % ------------------------
 % % Difference matrices
@@ -116,7 +118,8 @@ b = (Qxy*Ae - Ae*Qxy) * fsrc;
 % Solve system
 ez = Ae \ b;
 Ez = reshape(ez, params.Nx, params.Ny);
-[R, T] = reflectivity(Ez(params.Rpind,:), Ez(params.Tpind,:), k0, ki_x, ki_y, y, params.Ny, Wy, 1, sqrt(params.epsr));
+%[R, T] = reflectivity(Ez(params.Rpind,:), Ez(params.Tpind,:), k0, ki_x, ki_y, y, params.Ny, Wy, 1, sqrt(params.epsr));
+[R, T] = reflectivity(Ez(refp,:), Ez(trsp, :), k0, ki_x, ki_y, y, params.Ny, Wy, 1, sqrt(params.epsr));
 sizeR = size(R);
 sizeT = size(T);
 efile = strcat(dir, "Ez.csv");

@@ -5,7 +5,7 @@ setparam2D;
 %% Adjust parameters for case of Floquet and basic periodic BC
 param2D.lx = 80;
 param2D.ly = 80;
-param2D.bufsize = 240;
+param2D.bufsize = 360;
 param2D.Nx = 1000 + param2D.Lx + param2D.bufsize;
 param2D.Ny = 1001;
 
@@ -14,10 +14,10 @@ paramsP = param2D;
 paramsP.Floquet = 0
 
 %% Set the omeg sampling and and angle of incidence
-Nf = 5;
-Na = 5;
+Nf = 3;
+Na = 3;
 omegs = linspace(430e12, 750e12, Nf);
-thetai = linspace(0.0, 0.4*pi, Na)';
+thetai = linspace(0.0, 0.1, Na)';
 
 RF = zeros(Na, Nf);
 TF = zeros(Na, Nf);
@@ -26,11 +26,11 @@ TP = zeros(Na, Nf);
 %% Test
 for m = 1:Na
     for n = 1:Nf
-        pathhead = sprintf("bigtest/Floq_om%02d%02d_", m, n);
+        pathhead = sprintf("bigtest/Floq_om%02dth%02d_", n, m);
         [RF(m,n),TF(m,n)] = fdfd2D(omegs(n), thetai(m), paramsF, pathhead);
-        pathhead = sprintf("bigtest/Peri_om%02d%02d_", m, n);
+        pathhead = sprintf("bigtest/Peri_om%02dth%02d_", n, m);
         [RP(m,n),TP(m,n)] = fdfd2D(omegs(n), thetai(m), paramsP, pathhead);
-	sprintf("Both BC with omeg = %f and thetai = %f complete.", omegs(n), thetai(m))
+	sprintf("Both BC with omeg = %f and thetai = %f complete. (%d,%d)", omegs(n), thetai(m), m, n)
     end
 end
 
