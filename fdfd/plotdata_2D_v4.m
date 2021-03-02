@@ -1,6 +1,7 @@
 %% Plots data from the new function and struct
 %% Read in the parameters
-tab = readtable("testfun/om1_params.txt");
+pathhead = "PMLtest/UPML_om01th01_";
+tab = readtable(strcat(pathhead, "params.txt"));
 
 lamb0 = 6e8 .* pi ./ tab.omeg;
 lambx = lamb0 .* sin(tab.thetai);
@@ -9,9 +10,12 @@ sfr = tab.Lx + tab.bufsize;
 p = floor(0.5 * (tab.Nx-sfr) + sfr);
 
 %% Load in data
-x = 1e6*readmatrix("testfun/om1_X.csv");
-y = 1e6*readmatrix("testfun/om1_Y.csv");
-Ez = readmatrix("testfun/om1_Ez.csv");
+xfile = strcat(pathhead, "X.csv");
+yfile = strcat(pathhead, "Y.csv");
+Efile = strcat(pathhead, "Ez.csv");
+x = 1e6*readmatrix(xfile);
+y = 1e6*readmatrix(yfile);
+Ez = readmatrix(Efile);
 Ez = reshape(Ez, length(x), length(y));
 
 %% Plot filled contour and lines
@@ -29,6 +33,8 @@ hold on;
 % Add lines for the SF region and region boundary
 plot([x(sfr),x(sfr)], [y(1),y(end)], '--r', "linewidth", 2.5)
 plot([x(p),x(p)], [y(1),y(end)], '-k', "linewidth", 2.5)
+plot([x(tab.Rpind),x(tab.Rpind)], [y(1),y(end)], '--k', "linewidth", 2.5)
+plot([x(tab.Rpind),x(tab.Rpind)], [y(1),y(end)], '--k', "linewidth", 2.5)
 
 quiver(x(sfr+20), y(20), lamby*1e6, lambx*1e6, '-r', "linewidth", 2.5)
 
@@ -40,5 +46,6 @@ title(strcat('E_z(x,y) for \omega = ', freq_text));
 %text(z(q+10), -0.9, '\epsilon = \epsilon_0')
 
 %%
-saveas(f, "testfun/om1_Ez.png")
+figfile = strcat(pathhead, "Ez.png");
+saveas(f, figfile)
 %system ("wslview figs/test.png")

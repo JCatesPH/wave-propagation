@@ -18,12 +18,14 @@ param2D.Rpind = param2D.Lx + 5;
 param2D.Tpind = param2D.Nx - param2D.Lx - 5;
 
 %% PML parameters
-% Set the polynomial order
+% Set the polynomial order. (1 <= p < 5)
 param2D.sx_m = 3;
 % Desired reflectivity coefficient
-param2D.sx_R = 1e-9;
-% Set smax
-param2D.sx_smax = 5;
+param2D.sx_R = 1e-8;
+% Set \sigma_max
+param2D.sx_sigmax = 1;
+% Set s_max. (0 <= s_max <= 5)
+param2D.sx_smax = 3;
 
 %% Space parameters
 % Set the boundaries 
