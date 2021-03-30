@@ -12,7 +12,7 @@ c0 = 3e8;
 bw = 1e2 % Beamwidth
 t0 = 50.0; % Central time of pulse
 taup = 20; % Pulse duration
-E0 = @(t) exp(-0.5 .* ((t .- t0)./ taup).^2 ); % Source pulse
+E0 = @(t) exp(-0.5 .* ((t - t0)./ taup).^2 ); % Source pulse
 
 % Integration parameters
 % ---------------
@@ -23,8 +23,8 @@ epsr = ones(1,nz);
 con = zeros(1,nz);
 chi = zeros(1,nz);
 epsr(nz/2:3*nz/4) = 2 .* epsr(nz/2:3*nz/4); % Relative permittivity of 2 in second half of domain
-con(nz/2:3*nz/4) = 0.01 .+ con(nz/2:3*nz/4); % Conductivity of 0.01 in second half of domain
-chi(nz/2:3*nz/4) = 2 .+ con(nz/2:3*nz/4); 
+con(nz/2:3*nz/4) = 0.01 + con(nz/2:3*nz/4); % Conductivity of 0.01 in second half of domain
+chi(nz/2:3*nz/4) = 2 + con(nz/2:3*nz/4); 
 
 dt = dz / (2 * c0) % Size of t-step
 NMAX = 2000; % Number of time steps
@@ -36,10 +36,11 @@ z = [-nz/2:nz/2-1] .* dz;
 [Ex, Hy] = fdtd_DH(E0, epsr, con, dt, dz, nz, NMAX, Nsaved);
 
 clf;
-graphics_toolkit gnuplot;
-f = figure('visible','off');
 
-for n = 1:rows(Ex)
+f = figure(1);
+dimEx = size(Ex); 
+
+for n = 1:dimEx(1)
   % Plot the E-field
   subplot(2,1,1);
     plot(z, Ex(n,:));
@@ -57,4 +58,4 @@ for n = 1:rows(Ex)
     grid on;
   file_text=sprintf("figs/output%d.png",n)
   saveas (gca, file_text);
-endfor
+end

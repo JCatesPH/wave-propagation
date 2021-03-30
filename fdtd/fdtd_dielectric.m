@@ -20,7 +20,7 @@ dz = 0.1 % Size of x-step
 epsr = ones(1,nz);
 con = zeros(1,nz);
 epsr(nz/2:end) = 12.4 .* epsr(nz/2:end); % Relative permittivity of GaAs in second half of domain
-con(nz/2:end) = 5e-4 .+ con(nz/2:end); % Conductivity of GaAs in second half of domain
+con(nz/2:end) = 5e-4 + con(nz/2:end); % Conductivity of GaAs in second half of domain
 
 c0 = 3e8;
 dt = dz / (2 * c0) % Size of t-step
@@ -41,8 +41,9 @@ plot(z, Ei);
 clf;
 graphics_toolkit gnuplot
 f = figure('visible','off')
+dimEx = size(Ex);
 
-for n = 1:rows(Ex)
+for n = 1:dimEx(1)
   % Plot the E-field
   subplot(2,1,1);
     plot(z, Ex(n,:));
@@ -58,4 +59,4 @@ for n = 1:rows(Ex)
     grid on;
   file_text=sprintf("figs/output%d.png",n)
   saveas (gca, file_text);
-endfor
+end

@@ -9,10 +9,10 @@
 % Beam parameters
 % ---------------
 c0 = 3e8;
-bw = 1e2 % Beamwidth
+bw = 1e2; % Beamwidth
 t0 = 1e-9; % Central time of pulse
 tp = 1e-10; % Pulse duration
-E0 = @(t) exp(-0.5 .* ((t .- t0)./ tp).^2 ); % Source pulse
+E0 = @(t) exp(-0.5 .* ((t - t0)./ tp).^2 ); % Source pulse
 tau = 1e-9; % Relaxation time of material
 epsr1 = 2.; % Rel Perm in second material
 con1 = 0.001; % Conductivity in second material
@@ -30,8 +30,8 @@ epsr = ones(1,nz);
 con = zeros(1,nz);
 chi = zeros(1,nz);
 epsr(z1:z2) = epsr1 .* epsr(z1:z2); % Rel permittivity in second material
-con(z1:z2) = con1 .+ con(z1:z2); % Conductivity in second material
-chi(z1:z2) = chi1 .+ con(z1:z2); 
+con(z1:z2) = con1 + con(z1:z2); % Conductivity in second material
+chi(z1:z2) = chi1 + con(z1:z2); 
 
 dt = dz / (2 * c0) % Size of t-step
 NMAX = 2000; % Number of time steps
@@ -40,13 +40,15 @@ Nsaved = 40; % Interval between saves
 
 z = [-nz/2:nz/2-1] .* dz;
 
+%%
 [Ex, Hy] = fdtd_DHchi(E0, epsr, con, chi, tau, dt, dz, nz, NMAX, Nsaved);
 
+%%
+f = figure(1);
 clf;
-graphics_toolkit gnuplot;
-f = figure('visible','off');
+dimEx = size(Ex);
 
-for n = 1:rows(Ex)
+for n = 1:1:dimEx(1)
   % Plot the E-field
   subplot(2,1,1);
     plot(z, Ex(n,:));
@@ -64,4 +66,4 @@ for n = 1:rows(Ex)
     grid on;
   file_text=sprintf("figs/output%d.png",n)
   saveas (gca, file_text);
-endfor
+end
