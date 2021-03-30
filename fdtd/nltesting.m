@@ -35,11 +35,14 @@ bf = 500;
 ls = 250;
 rs = 500;
 
-epsr = ones(Nx,Ny); % Rel permittivity in second material
-con = zeros(Nx,Ny); % Conductivity in second material
-chi = zeros(Nx,Ny); % Dispersion term
+% Rel permittivity in second material
+epsr = ones(Nx,Ny); 
 epsr(ff:bf-1,ls:rs) = epsr1 .* epsr(ff:bf-1,ls:rs);
 epsr(bf,ls:rs-1) = epsr1 .* epsr(bf,ls:rs-1);
+% Conductivity in second material
+con = zeros(Nx,Ny); 
+% Dispersion term
+chi = zeros(Nx,Ny); 
 
 %% Beam parameters
 % ---------------
@@ -51,26 +54,6 @@ tp = 2e-10; % Pulse duration
 
 src = @(t) gaussianSource(t, X, Y, E0, w0, t0, tp);
 
-%% Check beam
-% t = (1:NMAX).*dt;
-% omeg = 2*pi/(t(end)-t(1)) * ((1:NMAX) - NMAX/2)';
-% 
-% E0t = zeros(NMAX, Nx, Ny);
-% for n = 1:NMAX
-%     E0t(n,:,:) = src(t(n));
-% end
-% E0w = fft(E0t) ./ NMAX;
-% 
-% figure(3);
-% clf;
-% %surf(X, Y, real(E0w));
-% colormap hot;
-% [M,c] = contourf(x, omeg, real(fftshift(E0w(:,:,floor(end/2)), 1)), 20);
-% set(c,'LineColor','none');
-% xlabel('$r$');
-% ylabel('$\omega$')
-% colorbar();
-
 %% Create parameter structure and begin simulation
 params.epsr = epsr;
 params.con = con;
@@ -79,6 +62,8 @@ params.tau = tau;
 params.dt = dt;
 params.Nx = Nx;
 params.Ny = Ny;
+params.Lx = 20;
+params.Ly = 20;
 params.Nsteps = NMAX;
 params.Nsaved = Nsaved
 
@@ -93,50 +78,17 @@ dimEz = size(Ez);
 Ezt = Ez(:,:,1);
 nlevels = 30;
 colormap parula;
-[C,h] = contourf(X, Y, Ezt);
+[C,h] = contourf(X, Y, Ezt');
 set(h,'LineColor','none');
 set(h,'ZDataSource','Ezt');
 xlabel('$x$');
 ylabel('$y$');
-caxis([-1 1]);
+caxis([min(min(min(Ez))) max(max(max(Ez)))]);
 colorbar();
 
 for n = 1:1:dimEz(3)
-    Ezt = Ez(:,:,n);
+    Ezt = Ez(:,:,n)';
     refreshdata
     file_text=sprintf("figs/output%d.png",n);
     saveas(f, file_text);
 end
-%%
-% V = VideoWriter('figs/newfile.avi','Motion JPEG AVI');
-% V.FrameRate = 3;
-% open(V);
-% 
-% fig = figure(5);
-% clf;
-% axis tight manual
-% ax = gca;
-% ax.XLabel.String = '$z$';
-% ax.YLabel.String = '$E_x(z)$';
-% ax.XLim = [z(1) z(end)];
-% ax.YLim = [-1 1];
-% ax.NextPlot = 'replaceChildren';
-% %fig.Visible = 'off';
-% 
-% P = plot(z, Ex(1,:));
-% 
-% dimEx = size(Ex); 
-% F(dimEx(1)) = struct('cdata',[],'colormap',[]);
-% 
-% for n = 1:dimEx(1)
-%     set(P, 'YData', Ex(n,:));
-%     drawnow
-%     F(n) = getframe(fig);
-%     writeVideo(V, F(n));
-% end
-% 
-% close(V);
-% %%
-% fig = figure(6);
-% clf;
-% movie(fig,F,5,2)

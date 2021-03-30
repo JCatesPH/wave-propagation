@@ -24,7 +24,7 @@ done
 
 
 # ffmpeg command to create mp4 of png figs
-ffmpeg -r $FRAMERATE -f image2 -s 1920x1080 -i output%d.png -vcodec libx264 -crf 25  -pix_fmt yuv420p "$OUTPUT".mp4
+ffmpeg -r $FRAMERATE -f image2 -i output%d.png -vf scale=-2:720 -vcodec libx264 -crf 25  -pix_fmt yuv420p "$OUTPUT".mp4
 
 if [[ $REMOVE = 'true' ]]
 then

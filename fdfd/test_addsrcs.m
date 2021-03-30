@@ -57,10 +57,20 @@ end
 f = figure(1)
 clf;
 plot(x*1e6, real(Ez(:,1)))
-xlabel('x [{\mu}m]');
-title('Total field E(x)');
+xlabel('$x$ [${\mu}$m]');
+title('Total field $E(x)$');
 
 f = figure(2)
 clf;
 plot(omegs, abs(A))
-title('Spectral amplitudes A(k)')
+title('Spectral amplitudes $A(k)$')
+
+%%
+f = figure(1);
+clf;
+[M,c] = contourf(x, y, real(Ez'), 64);
+set(c,'LineColor','none')
+xlabel('$x$ [m]');
+ylabel('$y$ [m]');
+colorbar("EastOutside");
+hold on;
