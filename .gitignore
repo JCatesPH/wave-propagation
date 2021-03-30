@@ -33,3 +33,7 @@
 
 # Octave files
 */octave-workspace
+
+# Output files
+*.png
+*.csv
