@@ -1,4 +1,6 @@
 %% Tests the FDFD with a box in TF region.
+set(groot, 'defaultAxesTickLabelInterpreter','latex'); set(groot, 'defaultLegendInterpreter','latex');
+set(groot, 'defaultTextInterpreter','latex');
 %% Mesh specifications
 % Number of cells to split vacuum wavelengths into
 param2D.dx = 5e-8; 
@@ -7,11 +9,11 @@ param2D.dy = 5e-8;
 param2D.Lx = 20; 
 param2D.Ly = 20; 
 % Enforce distance of PML from TF region
-param2D.bx = 35; 
-param2D.by = 35; 
+param2D.bx = 80; 
+param2D.by = 80; 
 % Total number of cells for x and y axis
-param2D.Nx = 1000 + param2D.Lx + param2D.bx;
-param2D.Ny = 1000 + param2D.Ly + param2D.by;
+param2D.Nx = 900 + param2D.Lx + param2D.bx;
+param2D.Ny = 900 + param2D.Ly + param2D.by;
 
 
 %% PML parameters
@@ -31,30 +33,30 @@ param2D.sy_smax = 3;
 % param2D.xbounds = [];
 % Set the relative permittivities and permeabilities in each region
 %   Only for second region in current implementation.
-epsr1 = 1;
+epsr1 = 9;
 param2D.epsr = epsr1;
-param2D.mur = 1;
-param2D.Floquet = 1
+param2D.mur = 1
 %% Domain parameters
-ff = 400;
-bf = 600;
-ls = 400;
-rs = 600;
+ff = 450;
+bf = 550;
+ls = 450;
+rs = 550;
 
 %%
 eps_zz = ones(param2D.Nx, param2D.Ny);
-eps_zz(ff:bf,ls:rs) = epsr1 * eps_zz(ff:bf,ls:rs);
-
+eps_zz(ff:bf-1,ls:rs) = epsr1 * eps_zz(ff:bf-1,ls:rs);
+eps_zz(bf,ls:rs-1) = epsr1 * eps_zz(bf,ls:rs-1);
 
 %% Set the omeg sampling and and angle of incidence
-omeg = 600e12;
+omeg = 430e12;
 thetai = 0.0;
 
 %% Test
 pathhead = sprintf("boxtest/box2");
 param2D.dir = pathhead;
+tic;
 [x, y, Ez] = fdfd2D(omeg, thetai, eps_zz, param2D);
-
+toc
 
 %% Plots data
 lamb0 = 6e8 .* pi ./ omeg;
@@ -91,14 +93,14 @@ plot([x(param2D.Lx+param2D.bx),x(end-param2D.Lx-param2D.bx)], ...
     [y(end-param2D.Ly-param2D.by),y(end-param2D.Ly-param2D.by)], '-k', "linewidth", 1.5)
 
 % Add outline of 'box'
-% plot([x(ff),x(ff)], [y(ls),y(rs)], '--k', "linewidth", 1.5)
-% plot([x(bf),x(bf)], [y(ls),y(rs)], '--k', "linewidth", 1.5)
-% plot([x(bf),x(ff)], [y(ls),y(ls)], '--k', "linewidth", 1.5)
-% plot([x(bf),x(ff)], [y(rs),y(rs)], '--k', "linewidth", 1.5)
+plot([x(ff),x(ff)], [y(ls),y(rs)], '--k', "linewidth", 1.5)
+plot([x(bf),x(bf)], [y(ls),y(rs)], '--k', "linewidth", 1.5)
+plot([x(bf),x(ff)], [y(ls),y(ls)], '--k', "linewidth", 1.5)
+plot([x(bf),x(ff)], [y(rs),y(rs)], '--k', "linewidth", 1.5)
 
 %quiver(x(sfr+20), y(20), lamby*1e6, lambx*1e6, '-r', "linewidth", 2.5)
 
-freq_text = sprintf(" %.2e THz", omeg*1e12);
+freq_text = sprintf(" %.0f THz", omeg*1e-12);
 title(strcat('$E_z(x,y)$ for $\omega$ = ', freq_text));
 %text(0.025, 0.05, ['\omega = ' freqtext], "units", "normalized");
 %text(z(sfr+10), -0.9, '\epsilon = \epsilon_0');
