@@ -31,8 +31,8 @@
 *.out
 *.app
 
-# Octave files
-*/octave-workspace
+# Matlab files
+*.asv
 
 # Output files
 *.png

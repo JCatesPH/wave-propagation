@@ -1,4 +1,4 @@
-function [x, y, EzL, Ez] = fdfd2D_nonlinear(omeg, thetai, eps_zz, PNL, dPNL, params)
+function [x, y, EzL, Ez] = fdfd2D_per_NL(omeg, thetai, eps_zz, PNL, dPNL, ddPNL, params)
 %fdfd2D - Compute FDFD solution for given frequency and parameters.
 %   Currently, the following assumptions are made:
 %       - isotropic so permittivity and permeability are scalars
@@ -38,70 +38,77 @@ end
 
 x = (1:params.Nx)' .* dx;
 y = (1:params.Ny)' .* dy;
+Wy = params.Ny * dy; % Width of y for periodic BC and reflections
+
 
 % ------------------------
 % % Domain calculations
 % --
 SFx = params.Lx + params.bx; % index where total-field region begins
-SFy = params.Ly + params.by;
 Nc = params.Nx*params.Ny;
 
 % ------------------------
 % %  PML absorbing boundary condition
-%       Now from Rumpf (2011) and Shin (2012)
+%       Now from Rumpf (2012)
 sx = ones(params.Nx,1);
 sx0 = 1 + params.sx_smax .* ((1:params.Lx) ./ params.Lx) .^ params.sx_m;
-sigmax_x = -(params.sx_m+1) * log(params.sx_R) / (2 * neta * params.Lx);
+sigmax = -(params.sx_m+1) * log(params.sx_R) / (2 * neta * params.Lx);
 %sigmax = params.sx_sigmax;
-sigxp = sigmax_x .* sin(pi .* (1:params.Lx) ./ (2 .* params.Lx)) .^ 2;
+sigxp = sigmax .* sin(pi .* (1:params.Lx) ./ (2 .* params.Lx)) .^ 2;
 sx(params.Nx-params.Lx+1:params.Nx) = sx0 .* (1 - 1i .* neta .* sigxp);
 sx(1:params.Lx) = fliplr(sx0 .* (1 - 1i .* neta .* sigxp));
 
-sy = ones(params.Nx,1);
-sy0 = 1 + params.sy_smax .* ((1:params.Ly) ./ params.Ly) .^ params.sx_m;
-sigmax_y = -(params.sy_m+1) * log(params.sy_R) / (2 * neta * params.Ly);
-%sigmax = params.sx_sigmax;
-sigyp = sigmax_y .* sin(pi .* (1:params.Ly) ./ (2 .* params.Ly)) .^ 2;
-sy(params.Ny-params.Ly+1:params.Ny) = sy0 .* (1 - 1i .* neta .* sigyp);
-sy(1:params.Ly) = fliplr(sy0 .* (1 - 1i .* neta .* sigyp));
 
 
 % Trick to copy vector params.Ny times
 Sx = sx(:,ones(params.Ny,1));
 Sx = Sx(:);
-Sy = sy(:,ones(params.Ny,1));
-Sy = Sy(:);
 
 % ------------------------
 % % Specify Scattered-Field and Total-Field regions
 %
-qmat = ones(params.Nx, params.Ny);
-qmat(SFx+1:end-SFx, SFy+1:end-SFy) = 0*qmat(SFx+1:end-SFx, SFy+1:end-SFy);
-qxy = qmat(:);
-Qxy = spdiags(qxy, 0, Nc, Nc);
+TFx = params.Nx - SFx;
+qxy = [ones(SFx,1); zeros(TFx,1)];
+Qxy = qxy(:, ones(params.Ny,1));
+Qxy = Qxy(:);
+Qxy = spdiags(Qxy, 0, Nc, Nc);
 
 
 % ------------------------
 % % Compute tensors for perms
 %
-eps_zz = Sx .* Sy .* eps_zz(:);
+eps_zz = Sx .* eps_zz(:);
 eps_zz = spdiags(eps_zz, 0, Nc, Nc);
 
-mu_xx = spdiags(Sy ./ Sx, 0, Nc, Nc);
-mu_yy = spdiags(Sx ./ Sy, 0, Nc, Nc);
+mu_xx = spdiags(Sx.^(-1), 0, Nc, Nc);
+mu_yy = spdiags(Sx, 0, Nc, Nc);
 
 
 % ------------------------
 % % Difference matrices
 %
-o = ones(Nc,1);
-dxe = spdiags([-o, o], [0,1], Nc, Nc);
-dye = spdiags([-o, o], [0,params.Nx], Nc, Nc);
+u = ones(Nc,1);
+dxe = spdiags([-u, u], [0,1], Nc, Nc);
+dye = spdiags([-u, u], [0,params.Nx], Nc, Nc);
+
+% Choose Floquet or basic periodic BC based on boolean param
+try
+   Fl = params.Floquet;
+catch 
+   error('Invalid parameter. Set boolean params.Floquet to 0 or 1.');
+end
+
+if Fl == 1
+    Dye = spdiags(exp(1i * ki_y * Wy)*u, -params.Nx*(params.Ny-1), dye);
+elseif Fl == 0
+    Dye = spdiags(u, -params.Nx*(params.Ny-1), dye);
+else
+    error('Invalid parameter. Set params.Floquet to 0 or 1.');
+end
 
 % Scale operators to grid
 Dxe = dxe ./ (k0 .* dx);
-Dye = dye ./ (k0 .* dy);
-
+Dye = Dye ./ (k0 .* dy);
 % Find FD operators for magnetic fields
 Dxh = -(Dxe');
 Dyh = -(Dye');
@@ -112,19 +119,18 @@ fsrc = planewave(x, y, ki_x, ki_y);
 Ae = sparse(Dxh / mu_yy * Dxe + Dyh / mu_xx * Dye + eps_zz);
 % Create RHS from source function
 b = (Qxy*Ae - Ae*Qxy) * fsrc;
-%spy(Ae)
 
+fprintf("Linear problem condition number: %e\n", condest(Ae));
 % Solve system
-% solveopt = optimoptions('fsolve','Display','iter', ...
-%     'Algorithm', 'trust-region', 'SubproblemAlgorithm', 'cg', ...
-%     'Jacobian', 'on');
-% solveopt = optimoptions('fsolve','Display','iter', 'Algorithm', 'levenberg-marquardt');
 ez_lin = Ae \ b;
 
+% ---- Nonlinear solving ----
 fprintf("Linear solution found. Starting nonlinear solver.\n");
-Xs = nlSolve(ez_lin, Ae, b, PNL, dPNL);
+
+
+Xs = nlSolve_Newton(ez_lin, Ae, b, PNL, dPNL, ddPNL, params.NLtol);
 ez = Xs.sol;
-fprintf("Nonlinear solver converged. \n Error: %e \n Function calls: %i\n", Xs.err, Xs.ncalls);
+fprintf("Nonlinear solver converged. \n Residual: %e \n Function calls: %i\n", Xs.err, Xs.ncalls);
 
 % Save the information if directory is passed.
 if isfield(params, 'dir')

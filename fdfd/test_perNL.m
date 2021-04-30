@@ -1,31 +1,35 @@
 %% Tests the FDFD with a box in TF region.
 set(groot, 'defaultAxesTickLabelInterpreter','latex'); set(groot, 'defaultLegendInterpreter','latex');
 set(groot, 'defaultTextInterpreter','latex');
+
+%% Select frequency
+%lamb0 = 6e8 .* pi ./ omeg;
+lamb0 = 2e-6
+omeg = 6e8 * pi ./ lamb0
+thetai = 0.0;
+
 %% Mesh specifications
 % Number of cells to split vacuum wavelengths into
 param2D.dx = 5e-8; 
 param2D.dy = 5e-8;
 % Number of cells for PML
-param2D.Lx = 20; 
-param2D.Ly = 20; 
+param2D.Lx = 40; 
 % Enforce distance of PML from TF region
-param2D.bx = 80; 
-param2D.by = 80; 
+param2D.bx = 120; 
 % Total number of cells for x and y axis
-param2D.Nx = 800 + 2*(param2D.Lx + param2D.bx);
-param2D.Ny = 800 + 2*(param2D.Ly + param2D.by);
+param2D.Nx = 800 + 2*param2D.Lx + param2D.bx;
+param2D.Ny = 201;
 Nc = param2D.Nx*param2D.Ny
+
+param2D.Floquet = 1;
 
 %% PML parameters
 % Set the polynomial order. (1 <= p < 5)
 param2D.sx_m = 3;
-param2D.sy_m = 3;
 % Desired reflectivity coefficient
-param2D.sx_R = 1e-9;
-param2D.sy_R = 1e-9;
+param2D.sx_R = 1e-10;
 % Set s_max. (0 <= s_max <= 5)
-param2D.sx_smax = 3;
-param2D.sy_smax = 3;
+param2D.sx_smax = 4;
 
 %% Space parameters
 % Set the boundaries 
@@ -33,38 +37,38 @@ param2D.sy_smax = 3;
 % param2D.xbounds = [];
 % Set the relative permittivities and permeabilities in each region
 %   Only for second region in current implementation.
-epsr1 = 1.5;
+epsr1 = 1.0;
 param2D.epsr = epsr1;
 param2D.mur = 1
 
 %% Domain parameters
+% Specify region that is not vacuum.
+%   ff : front face
+%   bf : back face
 ff = 400;
 bf = 600;
-ls = param2D.Lx + param2D.bx;
-rs = param2D.Nx - (param2D.Lx + param2D.bx);
 
 %%
 eps_zz = ones(param2D.Nx, param2D.Ny);
-eps_zz(ff:bf-1,ls:rs) = epsr1 * eps_zz(ff:bf-1,ls:rs);
-eps_zz(bf,ls:rs-1) = epsr1 * eps_zz(bf,ls:rs-1);
+eps_zz(ff:bf-1,:) = epsr1 * eps_zz(ff:bf-1,:);
 
 Q = zeros(param2D.Nx, param2D.Ny);
-Q(ff:bf-1,ls:rs) = Q(ff:bf-1,ls:rs) + 1;
-Q(bf,ls:rs-1) = Q(bf,ls:rs-1) + 1;
+Q(ff:bf-1,:) = Q(ff:bf-1,:) + 1;
 q = Q(:);
 
-%% Set the omeg sampling and and angle of incidence
-omeg = 800e12;
-thetai = 0.0;
 
 %% Test
-chi3 = 0;
+chi3 = 5e-12;
 dP = spalloc(Nc, Nc, sum(q));
-PNL = @(x) 3*chi3/4*(q.*abs(x)).^2 .*x;
-dPNL = @(x) spdiags(9*chi3/4*(q.*abs(x)).* x, 0, dP);
-pathhead = sprintf("nltest/kerr");
+ddP = spalloc(Nc, Nc, sum(q));
+PNL = @(x) 3/4*chi3*(q.*abs(x)).^2 .*x;
+dPNL = @(x) spdiags(3/2*chi3*(q.*abs(x)).^2 + 3/4*chi3*(q.*abs(x)).*x, 0, dP);
+ddPNL = @(x) spdiags(9/2*chi3*(q.*abs(x)).* x, 0, dP);
+param2D.NLtol = 1e-12; % Residual error tolerance
+
+pathhead = sprintf("nltest/per_kerr_");
 param2D.dir = pathhead;
-[x, y, EzL, Ez] = fdfd2D_nonlinear(omeg, thetai, eps_zz, PNL, dPNL, param2D);
+[x, y, EzL, Ez] = fdfd2D_per_NL(omeg, thetai, eps_zz, PNL, dPNL, ddPNL, param2D);
 
 
 %% Plots data
@@ -88,24 +92,16 @@ hold on;
 % Add PML boundaries
 plot([x(param2D.Lx),x(param2D.Lx)], [y(1),y(end)], '--r', "linewidth", 1.5)
 plot([x(end-param2D.Lx),x(end-param2D.Lx)], [y(1),y(end)], '--r', "linewidth", 1.5)
-plot([x(1),x(end)], [y(param2D.Ly),y(param2D.Ly)], '--r', "linewidth", 1.5)
-plot([x(1),x(end)], [y(end-param2D.Ly),y(end-param2D.Ly)], '--r', "linewidth", 1.5)
 
 % Add outline of Total-Field Region
 plot([x(param2D.Lx+param2D.bx),x(param2D.Lx+param2D.bx)], ...
-    [y(param2D.Ly+param2D.by),y(end-param2D.Ly-param2D.by)], '-k', "linewidth", 1.5)
-plot([x(end-param2D.Lx-param2D.bx),x(end-param2D.Lx-param2D.bx)], ...
-    [y(param2D.Ly+param2D.by),y(end-param2D.Ly-param2D.by)], '-k', "linewidth", 1.5)
-plot([x(param2D.Lx+param2D.bx),x(end-param2D.Lx-param2D.bx)], ...
-    [y(param2D.Ly+param2D.by),y(param2D.Ly+param2D.by)], '-k', "linewidth", 1.5)
-plot([x(param2D.Lx+param2D.bx),x(end-param2D.Lx-param2D.bx)], ...
-    [y(end-param2D.Ly-param2D.by),y(end-param2D.Ly-param2D.by)], '-k', "linewidth", 1.5)
+    [y(1),y(end)], '-k', "linewidth", 1.5)
+% plot([x(end-param2D.Lx-param2D.bx),x(end-param2D.Lx-param2D.bx)], ...
+%     [y(1),y(end)], '-k', "linewidth", 1.5)
 
 % Add outline of 'box'
-plot([x(ff),x(ff)], [y(ls),y(rs)], '--k', "linewidth", 1.5)
-plot([x(bf),x(bf)], [y(ls),y(rs)], '--k', "linewidth", 1.5)
-plot([x(bf),x(ff)], [y(ls),y(ls)], '--k', "linewidth", 1.5)
-plot([x(bf),x(ff)], [y(rs),y(rs)], '--k', "linewidth", 1.5)
+plot([x(ff),x(ff)], [y(1),y(end)], '--k', "linewidth", 1.5)
+plot([x(bf),x(bf)], [y(1),y(end)], '--k', "linewidth", 1.5)
 
 %quiver(x(sfr+20), y(20), lamby*1e6, lambx*1e6, '-r', "linewidth", 2.5)
 
@@ -126,13 +122,9 @@ figure(2);
 plot(x, real(Ez(:,ceil(end/2))));
 
 %% Plot the linear solution too
-lamb0 = 6e8 .* pi ./ omeg;
-lambx = lamb0 .* sin(thetai);
-lamby = lamb0 .* cos(thetai);
-
 f = figure(3);
 clf;
-[M,c] = contourf(x, y, real(EzL'), 64);
+[M,c] = contourf(x, y, real(Ez'), 64);
 set(c,'LineColor','none')
 xlabel('$x$ [m]');
 ylabel('$y$ [m]');
@@ -146,24 +138,16 @@ hold on;
 % Add PML boundaries
 plot([x(param2D.Lx),x(param2D.Lx)], [y(1),y(end)], '--r', "linewidth", 1.5)
 plot([x(end-param2D.Lx),x(end-param2D.Lx)], [y(1),y(end)], '--r', "linewidth", 1.5)
-plot([x(1),x(end)], [y(param2D.Ly),y(param2D.Ly)], '--r', "linewidth", 1.5)
-plot([x(1),x(end)], [y(end-param2D.Ly),y(end-param2D.Ly)], '--r', "linewidth", 1.5)
 
 % Add outline of Total-Field Region
 plot([x(param2D.Lx+param2D.bx),x(param2D.Lx+param2D.bx)], ...
-    [y(param2D.Ly+param2D.by),y(end-param2D.Ly-param2D.by)], '-k', "linewidth", 1.5)
-plot([x(end-param2D.Lx-param2D.bx),x(end-param2D.Lx-param2D.bx)], ...
-    [y(param2D.Ly+param2D.by),y(end-param2D.Ly-param2D.by)], '-k', "linewidth", 1.5)
-plot([x(param2D.Lx+param2D.bx),x(end-param2D.Lx-param2D.bx)], ...
-    [y(param2D.Ly+param2D.by),y(param2D.Ly+param2D.by)], '-k', "linewidth", 1.5)
-plot([x(param2D.Lx+param2D.bx),x(end-param2D.Lx-param2D.bx)], ...
-    [y(end-param2D.Ly-param2D.by),y(end-param2D.Ly-param2D.by)], '-k', "linewidth", 1.5)
+    [y(1),y(end)], '-k', "linewidth", 1.5)
+%plot([x(end-param2D.Lx-param2D.bx),x(end-param2D.Lx-param2D.bx)], ...
+%    [y(1),y(end)], '-k', "linewidth", 1.5)
 
 % Add outline of 'box'
-plot([x(ff),x(ff)], [y(ls),y(rs)], '--k', "linewidth", 1.5)
-plot([x(bf),x(bf)], [y(ls),y(rs)], '--k', "linewidth", 1.5)
-plot([x(bf),x(ff)], [y(ls),y(ls)], '--k', "linewidth", 1.5)
-plot([x(bf),x(ff)], [y(rs),y(rs)], '--k', "linewidth", 1.5)
+plot([x(ff),x(ff)], [y(1),y(end)], '--k', "linewidth", 1.5)
+plot([x(bf),x(bf)], [y(1),y(end)], '--k', "linewidth", 1.5)
 
 %quiver(x(sfr+20), y(20), lamby*1e6, lambx*1e6, '-r', "linewidth", 2.5)
 
