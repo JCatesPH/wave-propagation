@@ -31,8 +31,10 @@ gsl_spmatrix_complex *Dxe;
 gsl_spmatrix_complex *Dye;
 gsl_spmatrix_complex *Dxh;
 gsl_spmatrix_complex *Dyh;
-gsl_spmatrix_complex *Ae;
-gsl_spmatrix_complex *Q;
+gsl_spmatrix_complex *Ae_COO; // COO indicates storage format for sparse matrix
+gsl_spmatrix_complex *Q_COO;
+gsl_spmatrix_complex *Ae_CSC; // CSC : Compressed Sparse Column format
+gsl_spmatrix_complex *Q_CSC;
 
 // --- Define source function ---
 void fsource(float kx, float ky){
@@ -158,17 +160,17 @@ void defineAe() {
     // Compute first division and multiplication
     gsl_vector_complex_div(tmp, muyy);
     gsl_spmatrix_complex_scale_columns(Dxh, muyy);
-    gsl_spblas_complex_dgemm(1.0, Dxh, Dxe, Ap1);
+    gsl_spblas_cgemm(1.0, Dxh, Dxe, Ap1);
     // Compute second division and multiplication
     gsl_vector_complex_set_all(tmp, z);
     gsl_vector_complex_div(tmp, muxx);
     gsl_spmatrix_complex_scale_columns(Dyh, muxx);
-    gsl_spblas_complex_dgemm(1.0, Dyh, Dye, Ap2);
-    gsl_spmatrix_complex_add(Ae, Ap1, Ap2);
+    gsl_spblas_cgemm(1.0, Dyh, Dye, Ap2);
+    gsl_spmatrix_complex_add(Ae_COO, Ap1, Ap2);
     for (int i=0; i<Nc; i++){
-        z = gsl_spmatrix_complex_get(Ae, i, i);
+        z = gsl_spmatrix_complex_get(Ae_COO, i, i);
         z = gsl_complex_add(z, gsl_vector_complex_get(epszz, i));
-        gsl_spmatrix_complex_set(Ae, i, i, z);
+        gsl_spmatrix_complex_set(Ae_COO, i, i, z);
     }
 
     // Clean up everything
@@ -191,11 +193,11 @@ void defineQ(int SFx){
     for (int i=0; i<Nc; i++) {
         if ((i % NY) < SFx) {
             GSL_SET_COMPLEX(&z, 1.0, 0.0);
-            gsl_spmatrix_complex_set(Q, i, i, z);
+            gsl_spmatrix_complex_set(Q_COO, i, i, z);
         }
         else {
             GSL_SET_COMPLEX(&z, 0.0, 0.0);
-            gsl_spmatrix_complex_set(Q, i, i, z);
+            gsl_spmatrix_complex_set(Q_COO, i, i, z);
         }
     }
 }
@@ -212,7 +214,10 @@ int main ()
     Dye = gsl_spmatrix_complex_alloc_nzmax(Nc, Nc, 3*Nc, GSL_SPMATRIX_COO);
     Dxh = gsl_spmatrix_complex_alloc_nzmax(Nc, Nc, 3*Nc, GSL_SPMATRIX_COO);
     Dyh = gsl_spmatrix_complex_alloc_nzmax(Nc, Nc, 3*Nc, GSL_SPMATRIX_COO);
-    Ae = gsl_spmatrix_complex_alloc_nzmax(Nc, Nc, 3*Nc, GSL_SPMATRIX_COO);
+    Ae_COO = gsl_spmatrix_complex_alloc_nzmax(Nc, Nc, 3*Nc, GSL_SPMATRIX_COO);
+    Q_COO = gsl_spmatrix_complex_alloc_nzmax(Nc, Nc, 3*Nc, GSL_SPMATRIX_COO);
+    Ae_CSC = gsl_spmatrix_complex_alloc_nzmax(Nc, Nc, 3*Nc, GSL_SPMATRIX_CSC);
+    Q_CSC = gsl_spmatrix_complex_alloc_nzmax(Nc, Nc, 3*Nc, GSL_SPMATRIX_CSC);
 
     // --- Define source parameters ---
     float omeg = 9.4248e+14; // source frequency
@@ -268,7 +273,21 @@ int main ()
 
     // --- Define total linear operator ---
     defineAe();
-    
+
+    // --- Define masking matrix ---
+    defineQ(SFx);
+
+    // --- Change sparse matrix format to enable mult ---
+    gsl_spmatrix_complex_csc(Ae_CSC, Ae_COO);
+    gsl_spmatrix_complex_csc(Q_CSC, Q_COO);
+
+    // --- Free old sparse matrix memory ---
+    gsl_spmatrix_complex_free(Ae_COO);
+    gsl_spmatrix_complex_free(Q_COO);
+
+
+    // --- Use masking matrix to find source vector ---
+
 
     return 0;
 }
