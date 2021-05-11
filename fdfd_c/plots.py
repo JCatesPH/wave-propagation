@@ -12,19 +12,42 @@ Y = df.values
 
 
 # %%
-df = pd.read_csv('data/epszz.csv', header=None, delimiter=' ')
+df = pd.read_csv('data/epszz.csv', header=None, delimiter=',')
 epszz = df.values[:,0] + 1j*df.values[:,1]
 epszz = np.reshape(epszz, (1000,200))
 
 #%%
 plt.contourf(X[:,0], Y[:,0], np.transpose(np.abs(epszz)))
 plt.colorbar()
+plt.show()
 
 # %%
-df = pd.read_csv('data/src.csv', header=None, delimiter=' ')
+df = pd.read_csv('data/src.csv', header=None, delimiter=',')
 src = df.values[:,0] + 1j*df.values[:,1]
 src = np.reshape(src, (1000,200))
 
 #%%
 plt.contourf(X[:,0], Y[:,0], np.transpose(np.real(src)))
 plt.colorbar()
+plt.show()
+
+# %%
+df = pd.read_csv('data/b.csv', header=None, delimiter=',')
+b = df.values[:,0] + 1j*df.values[:,1]
+b = np.reshape(b, (1000,200))
+
+#%%
+plt.contourf(X[:,0], Y[:,0], np.transpose(np.real(b)))
+plt.colorbar()
+plt.show()
+
+#%%
+df = pd.read_csv('data/Ez.csv', header=None, delimiter=',')
+Ez = df.values[:,0] + 1j*df.values[:,1]
+Ez = np.reshape(Ez, (1000,200))
+
+#%%
+plt.contourf(X[:,0], Y[:,0], np.transpose(np.real(Ez)))
+plt.colorbar()
+plt.show()
+# %%

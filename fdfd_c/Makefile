@@ -1,10 +1,10 @@
 # ----------  RULE 1  -------------
 # Add source files
-CFILES := fdfd_per.c
+CFILES := fdfd_per_CSparse.c 
 CDEPS  := 
 #OBJFILES := fsource.o
-HFILES := domain.h
-CFLAGS := -lm -Wall -lgsl -lgslcblas -std=c11 -I/usr/local/include/gsl:/home/jmcates/SuiteSparse/include -L/usr/local/lib:/home/jmcates/SuiteSparse/lib
+HFILES := include/domain.h include/cs.h
+CFLAGS := -lm -Wall -lrt -lgsl -lgslcblas -std=c11 -I./include -L/home/jmcates/SuiteSparse/lib -fexceptions -fPIC   -O3 -fexceptions -fPIC -fopenmp -lcxsparse
 
 
 test : $(CFILES) $(CDEPS) $(HFILES) 
