@@ -4,7 +4,7 @@ CFILES := fdfd_per_CSparse.c
 CDEPS  := 
 #OBJFILES := fsource.o
 HFILES := include/domain.h include/cs.h
-CFLAGS := -lm -Wall -lrt -lgsl -lgslcblas -std=c11 -I./include -L/home/jmcates/SuiteSparse/lib -fexceptions -fPIC   -O3 -fexceptions -fPIC -fopenmp -lcxsparse
+CFLAGS := -lm -Wall -lrt -lgsl -std=c11 -I./include -L/home/jmcates/SuiteSparse/lib -fexceptions -fPIC -fopenmp -lcxsparse
 
 
 test : $(CFILES) $(CDEPS) $(HFILES) 
