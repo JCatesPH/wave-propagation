@@ -22,6 +22,16 @@ plt.colorbar()
 plt.show()
 
 # %%
+df = pd.read_csv('data/q.csv', header=None, delimiter=',')
+Q = df.values[:,0] + 1j*df.values[:,1]
+Q = np.reshape(Q, (1000,200))
+
+#%%
+plt.contourf(X[:,0], Y[:,0], np.transpose(np.abs(Q)))
+plt.colorbar()
+plt.show()
+
+# %%
 df = pd.read_csv('data/src.csv', header=None, delimiter=',')
 src = df.values[:,0] + 1j*df.values[:,1]
 src = np.reshape(src, (1000,200))

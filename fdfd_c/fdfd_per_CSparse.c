@@ -5,13 +5,7 @@
 
 #include "include/cs.h"
 #include "include/domain.h"
-
-// --- Define global variables ---
-#define PI 3.14159
-#define C0 3e8
-#define EPS0 8.85418781762039e-12
-#define MU0 1.25663706212e-6
-#define ETA0 376.7303
+#include "include/util.h"
 
 //#define VERBOSE // Uncomment to print additional debugging messages.
 
@@ -22,37 +16,6 @@ double Y[NY]; // y grid points
 double _Complex sx[LX];
 cs_complex_t epszz[NX*NY], muxx[NX*NY], muyy[NX*NY]; 
 cs_cl *Dxe, *Dye, *Dxh, *Dyh, *Ae, *Q; 
-
-
-// --- Sparse matrix scaling function ---
-cs_cl *cs_cl_scale (cs_cl *A, double alpha)
-{
-    cs_cl *C;
-    cs_long_t n, triplet, nn, p, nz, *Ap, *Ai, *Cp, *Ci ;
-    cs_complex_t *Ax, *Cx ;
-    if (!A || !A->x) return (NULL) ;    /* return if A NULL or pattern-only */
-    n = A->n ; Ap = A->p ; Ai = A->i ; Ax = A->x ;
-    triplet = (A->nz >= 0) ;            /* true if A is a triplet matrix */
-    nz = triplet ? A->nz : Ap [n] ;
-    C = cs_cl_spalloc (A->m, n, A->nzmax, 1, triplet) ;
-    if (!C) return (NULL) ;
-    Cp = C->p ; Ci = C->i ; Cx = C->x ;
-    nn = triplet ? nz : (n+1) ;
-    for (p = 0 ; p < nz ; p++) Ci [p] = Ai [p] ;
-    for (p = 0 ; p < nn ; p++) Cp [p] = Ap [p] ;
-    for (p = 0 ; p < nz ; p++) Cx [p] = alpha * Ax [p];
-    if (triplet) C->nz = nz ;
-    return (C) ;
-}
-
-// --- Utility function to print complex vector ---
-void cvecprint(char* path, cs_complex_t *vec, int length){
-    FILE *fp;
-    fp = fopen(path, "w");
-    for (int i=0; i<length; i++) {
-        fprintf(fp, "%12.9e, %+12.9e\n", creal(vec[i]), cimag(vec[i]));
-    }
-}
 
 // --- Define source function ---
 void fsource(float kx, float ky){
@@ -68,7 +31,7 @@ void fsource(float kx, float ky){
 
 // --- Define permittivity function ---
 void epszzfunc(){
-    double sigmax = -(sx_p + 1) * log(sx_R) / (2 * ETA0 * LX);
+    double sigmax = -(SX_P + 1) * log(SX_R) / (2 * ETA0 * LX);
     double frac, s0x, sigx;
 
     // Define PML region and change eps accordingly.
@@ -78,7 +41,7 @@ void epszzfunc(){
             //printf("%d, %d\n", i, j);
             if (i < LX) {
                 frac = (float) (LX-i)/LX;
-                s0x = 1.0 + sx_max * powf(frac, sx_p);
+                s0x = 1.0 + SX_M * powf(frac, SX_P);
                 sigx = sigmax * powf(sin(PI*frac/2), 2);
                 sx[i] = s0x * (1.0 - I * ETA0 * sigx);
                 epszz[i*NY+j] = sx[i];
@@ -135,29 +98,28 @@ void finitediffs(float k0, float ky, float Wy) {
         for (int j=0; j<Nc; j++) {
             // Set diagonal elements
             if (i==j){
-                cserr = cs_cl_entry(Dxe, i, j, -1/(k0*dx));
+                cserr = cs_cl_entry(Dxe, i, j, -1/(k0*DX));
                 if (cserr != 1) {fprintf(stderr, "Error encountered in cs_entry for Dxe.\n"); exit(EXIT_FAILURE);}
-                cserr = cs_cl_entry(Dye, i, j, -1/(k0*dy));
+                cserr = cs_cl_entry(Dye, i, j, -1/(k0*DY));
                 if (cserr != 1) {fprintf(stderr, "Error encountered in cs_entry for Dye.\n"); exit(EXIT_FAILURE);}
             }
             // Set first superdiagonal
             else if (j==i+1){
-                cserr = cs_cl_entry(Dxe, i, j, 1/(k0*dx));
+                cserr = cs_cl_entry(Dxe, i, j, 1/(k0*DX));
                 if (cserr != 1) {fprintf(stderr, "Error encountered in cs_entry for Dxe.\n"); exit(EXIT_FAILURE);}
             }
             // Set second band for Dye
             else if (j==i+NX){
-                cserr = cs_cl_entry(Dye, i, j, 1/(k0*dx));
+                cserr = cs_cl_entry(Dye, i, j, 1/(k0*DY));
                 if (cserr != 1) {fprintf(stderr, "Error encountered in cs_entry for Dye.\n"); exit(EXIT_FAILURE);}
             }
             // Impose Floquet boundary condition
             else if (j==i-NX*(NY-1)) {
-                cserr = cs_cl_entry(Dye, i, j, cexpf(I*ky*Wy));
+                cserr = cs_cl_entry(Dye, i, j, cexpf(I*ky*Wy)/(k0*DY));
                 if (cserr != 1) {fprintf(stderr, "Error encountered in cs_entry for Dye.\n"); exit(EXIT_FAILURE);}
             }
         }
     }
-    //cs_cl_print(Dxe, 0);
     Dxe = cs_cl_compress(Dxe);
     Dye = cs_cl_compress(Dye);
     printf("Finished defining finite-difference matrices.\n");
@@ -224,15 +186,82 @@ void defineAe(float k0, float ky, float Wy) {
 
 // --- Define masking matrix for SF/TF ---
 void defineQ(int SFx){
+    cs_complex_t q[Nc];
     int cserr;
-    for (int i=0; i<Nc; i++) {
-        if ((i % NY) < SFx) {
-            cserr = cs_cl_entry(Q, i, i, 1.0+I*0.0);
-            if (cserr != 1) {fprintf(stderr, "Error encountered in cs_entry for Q.\n"); exit(EXIT_FAILURE);}
+    for (int i=0; i<NX; i++){
+        for (int j=0; j<NY; j++) {
+            if (i<SFx) {
+                q[i*NY+j] = 1.0;
+            }
+            else {
+                q[i*NY+j] = 0.0;
+            }
         }
     }
+    for (int i=0; i<Nc; i++) {
+        cserr = cs_cl_entry(Q, i, i, q[i]);
+        if (cserr != 1) {fprintf(stderr, "Error encountered in cs_entry for Q.\n"); exit(EXIT_FAILURE);}
+    }
+    cvecprint("data/q.csv", q, Nc);
     Q = cs_cl_compress(Q);
-    //cs_cl_print(Q, 0);
+
+    #ifdef VERBOSE
+        printf("===============\nQ\n");
+        cs_cl_print(Q, 0);
+    #endif
+}
+
+
+// --- Define nonlinear operator ---
+cs_complex_t *nloperator(cs_complex_t *ez0){
+    int SFx = LX + BX;
+    static cs_complex_t ez1[NX*NY];
+    for (int i=0; i<Nc; i++){
+        ez1[i] = 0.0;
+    }
+    cs_cl_gaxpy(Ae, ez0, ez1);
+    for (int i=0; i<Nc; i++){
+        ez1[i] = ez1[i] - b[i];
+        if ((i % NX) > SFx) {
+            ez1[i] += 3/4 * chi3 * pow(cabs(ez0[i]),2)*ez0[i];
+        }
+    }
+    return ez1;
+}
+
+// --- Define Anderson acceleration algorithm ---
+/*
+cs_complex_t *anderson(int m, cs_complex_t *ez0, float tol){
+    // Adapted from pseudocode in https://doi.org/10.1016/j.cpc.2018.09.013
+    int n = 0, k; // Iteration number
+    float res = 1; // Residual
+    cs_complex_t *ez1t, *ez1, *Gn1; // Updated guess
+
+    ez1 = nloperator(ez0);
+    Gn1 = cvecdiff(ez1, ez0, Nc);
+
+    while (res >= tol){
+        n += n;
+        k = MIN(m, n);
+        ez1 = nloperator(ez1);
+    }
+}
+*/
+
+
+// --- Define Newton algorithm ---
+cs_complex_t *newtonsol(cs_complex_t *ez0, float tol){
+    int n = 0; // Iteration number
+    float res = 1; // Residual
+    cs_complex_t *ez1; // Updated guess
+    
+    ez1 = nloperator(ez0);
+
+    while (res >= tol){
+        n += n;
+        ez1 = nloperator(ez1);
+    }
+    return ez1;
 }
 
 // ------- MAIN -------
@@ -252,8 +281,8 @@ int main ()
     float ky = k0 * sin(thetai);
 
     // --- Define derived domain variables ---
-    float Wy = NY * dy; // width of y domain (for Floquet)
-    int SFx = NX - LX - BX;
+    float Wy = NY * DY; // width of y domain (for Floquet)
+    int SFx = LX + BX;
 
     FILE *fp;
     char fname[40];
@@ -262,7 +291,7 @@ int main ()
     sprintf(fname, "data/X.csv");
     fp = fopen(fname, "w");
     for (int i=0; i<NX; i++){
-        X[i] = i*dx;
+        X[i] = i*DX;
         fprintf(fp, "%12.9e\n", X[i]);
     }
     fclose(fp);
@@ -270,7 +299,7 @@ int main ()
     sprintf(fname, "data/Y.csv");
     fp = fopen(fname, "w");
     for (int j=0; j<NY; j++){
-        Y[j] = j*dy;
+        Y[j] = j*DY;
         fprintf(fp, "%12.9e\n", Y[j]);
     }
     fclose(fp);
@@ -294,6 +323,8 @@ int main ()
     Dxh = cs_cl_scale(Dxh, -1.0);
     Dyh = cs_cl_scale(Dyh, -1.0);
 
+    cs_cl_print(Dxh, 1);
+
     // --- Define total linear operator ---
     printf("Defining linear operator Ae.\n");
     defineAe(k0, ky, Wy);
@@ -310,7 +341,10 @@ int main ()
 
     // --- Set tolerance and solve system with LU factorization ---
     double tol = 1;
-    cs_cl_lusol(0, Ae, b, tol);
+    int cserr;
+    printf("Solving system.\n");
+    cserr = cs_cl_qrsol(3, Ae, b);
+    if (cserr != 1) {fprintf(stderr, "Error encountered in LU solve.\n"); exit(EXIT_FAILURE);}
     printf("System solved.\n");
 
     // --- Print output for further plotting/analysis ---

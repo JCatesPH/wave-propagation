@@ -38,3 +38,7 @@
 *.png
 *.csv
 fdfd_c/.vscode/settings.json
+.vscode/settings.json
+*.mp4
+*.avi
+fdtd_c/fdtd
