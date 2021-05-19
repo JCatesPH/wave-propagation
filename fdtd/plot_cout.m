@@ -4,9 +4,9 @@ set(groot, 'defaultLegendInterpreter','latex');
 set(groot, 'defaultTextInterpreter','latex');
 
 %%
-X = readmatrix("data/X.csv");
-Y = readmatrix("data/Y.csv");
-Ez = readmatrix("data/Ez0000.csv");
+X = readmatrix("../fdtd_c/data/X.csv");
+Y = readmatrix("../fdtd_c/data/Y.csv");
+Ez = readmatrix("../fdtd_c/data/Ez0000.csv");
 
 %%
 f = figure(1);
@@ -21,9 +21,9 @@ ylabel('$y$ [m]');
 caxis([-0.4 1.0]);
 colorbar();
 
-for n = 1:20
-    T = (n-1)*2;
-    matfile = sprintf("data/Ez%04d.csv", T);
+for n = 1:10
+    T = (n-1)*10;
+    matfile = sprintf("../fdtd_c/data/Ez%04d.csv", T);
     Ez = readmatrix(matfile);
     
     titletxt = sprintf("$E_z(x,y)$ at $T=%d$", T);
