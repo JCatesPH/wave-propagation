@@ -8,6 +8,7 @@
 #include "include/util.h"
 
 //#define VERBOSE // Uncomment to print additional debugging messages.
+#define INCHECK // Uncomment to exit before solver is invoked. For checking inputs.
 
 const int Nc = NX*NY;
 cs_complex_t b[NX*NY], fsrc[NX*NY]; // Source vector
@@ -18,12 +19,12 @@ cs_complex_t epszz[NX*NY], muxx[NX*NY], muyy[NX*NY];
 cs_cl *Dxe, *Dye, *Dxh, *Dyh, *Ae, *Q; 
 
 // --- Define source function ---
-void fsource(float kx, float ky){
+void fsource(double kx, double ky){
     printf("Defining source.\n");
     for (int i=0; i<NX; i++){
         for (int j=0; j<NY; j++){
-            fsrc[i*NY+j] = cexpf(I*(kx*X[i] + ky*Y[j]));
-            b[i*NY+j] = 0.0;
+            fsrc[i+j*NX] = cexp(I*(kx*X[i] + ky*Y[j]));
+            b[i+j*NX] = 0.0;
         }
     }
     printf("Finished defining source.\n");
@@ -32,6 +33,9 @@ void fsource(float kx, float ky){
 // --- Define permittivity function ---
 void epszzfunc(){
     double sigmax = -(SX_P + 1) * log(SX_R) / (2 * ETA0 * LX);
+    #ifdef VERBOSE
+        printf("sigmax = %f\n", sigmax);
+    #endif
     double frac, s0x, sigx;
 
     // Define PML region and change eps accordingly.
@@ -40,17 +44,17 @@ void epszzfunc(){
         for (int j=0; j<NY; j++) {
             //printf("%d, %d\n", i, j);
             if (i < LX) {
-                frac = (float) (LX-i)/LX;
+                frac = (double) (LX-i)/LX;
                 s0x = 1.0 + SX_M * powf(frac, SX_P);
-                sigx = sigmax * powf(sin(PI*frac/2), 2);
+                sigx = sigmax * powf(sin(PI*frac/2.0), 2.0);
                 sx[i] = s0x * (1.0 - I * ETA0 * sigx);
-                epszz[i*NY+j] = sx[i];
+                epszz[i+j*NX] = sx[i];
             }
             else if (i > NX-LX) {
-                epszz[i*NY+j] = sx[NX-i];
+                epszz[i+j*NX] = sx[NX-i-1];
             }
             else{
-                epszz[i*NY+j] = 1.0 + I*0.0;
+                epszz[i+j*NX] = 1.0 + I*0.0;
             }
         }
     }
@@ -66,21 +70,21 @@ void mufunc() {
         for (int j=0; j<NY; j++) {
             //printf("%d, %d\n", i, j);
             if (i < LX) {
-                muxx[i*NY+j] = 1/sx[i];
-                muyy[i*NY+j] = sx[i];
+                muxx[i+j*NX] = 1/sx[i];
+                muyy[i+j*NX] = sx[i];
             }
             else if (i > NX-LX) {
-                muxx[i*NY+j] = 1/sx[NX-i];
-                muyy[i*NY+j] = sx[NX-i];
+                muxx[i+j*NX] = 1/sx[NX-i-1];
+                muyy[i+j*NX] = sx[NX-i-1];
             }
             else {
-                muxx[i*NY+j] = 1.0 + I*0.0;
-                muyy[i*NY+j] = 1.0 + I*0.0;
+                muxx[i+j*NX] = 1.0 + I*0.0;
+                muyy[i+j*NX] = 1.0 + I*0.0;
             }
-            if (isnan(creal(muxx[i*NY+j])) ||  isnan(cimag(muxx[i*NY+j]))) {
+            if (isnan(creal(muxx[i+j*NX])) ||  isnan(cimag(muxx[i+j*NX]))) {
                 fprintf(stderr, "Error: NaN encountered in muxx.\n"); exit(EXIT_FAILURE);
             }
-            if (isnan(creal(muyy[i*NY+j])) ||  isnan(cimag(muyy[i*NY+j]))) {
+            if (isnan(creal(muyy[i+j*NX])) ||  isnan(cimag(muyy[i+j*NX]))) {
                 fprintf(stderr, "Error: NaN encountered in muyy.\n"); exit(EXIT_FAILURE);
             }
         }
@@ -89,11 +93,12 @@ void mufunc() {
 }
 
 // --- Define finite-difference matrices ---
-void finitediffs(float k0, float ky, float Wy) {
+void finitediffs(double k0, double ky, double Wy) {
     int cserr;
 
     // Need to set the diagonals for finite differences.
     printf("Defining finite-difference matrices.\n");
+    /* OLD SLOW METHOD
     for (int i=0; i<Nc; i++){
         for (int j=0; j<Nc; j++) {
             // Set diagonal elements
@@ -119,6 +124,30 @@ void finitediffs(float k0, float ky, float Wy) {
                 if (cserr != 1) {fprintf(stderr, "Error encountered in cs_entry for Dye.\n"); exit(EXIT_FAILURE);}
             }
         }
+    } 
+    */
+    for (int i=0; i<Nc; i++){
+        // Set diagonal elements
+        cserr = cs_cl_entry(Dxe, i, i, -1/(k0*DX));
+        if (cserr != 1) {fprintf(stderr, "Error encountered in cs_entry for Dxe.\n"); exit(EXIT_FAILURE);}
+        cserr = cs_cl_entry(Dye, i, i, -1/(k0*DY));
+        if (cserr != 1) {fprintf(stderr, "Error encountered in cs_entry for Dye.\n"); exit(EXIT_FAILURE);}
+
+        // Set first superdiagonal
+        if (i < Nc-1){
+            cserr = cs_cl_entry(Dxe, i, i+1, 1/(k0*DX));
+            if (cserr != 1) {fprintf(stderr, "Error encountered in cs_entry for Dxe.\n"); exit(EXIT_FAILURE);}
+        }
+        // Set second band for Dye
+        if (i < Nc-NX){
+            cserr = cs_cl_entry(Dye, i, i+NX, 1/(k0*DY));
+            if (cserr != 1) {fprintf(stderr, "Error encountered in cs_entry for Dye.\n"); exit(EXIT_FAILURE);}
+        }
+        // Impose Floquet boundary condition
+        if (i >= NX*(NY-1)) {
+            cserr = cs_cl_entry(Dye, i, i-NX*(NY-1), cexpf(I*ky*Wy)/(k0*DY));
+            if (cserr != 1) {fprintf(stderr, "Error encountered in cs_entry for Dye.\n"); exit(EXIT_FAILURE);}
+        }
     }
     Dxe = cs_cl_compress(Dxe);
     Dye = cs_cl_compress(Dye);
@@ -126,7 +155,7 @@ void finitediffs(float k0, float ky, float Wy) {
 }
 
 // --- Define full linear operator ---
-void defineAe(float k0, float ky, float Wy) {
+void defineAe(double k0, double ky, double Wy) {
     int cserr;
 
     // Create local matrices for pieces of product
@@ -134,14 +163,17 @@ void defineAe(float k0, float ky, float Wy) {
     cs_cl *muyymat = cs_cl_spalloc(Nc, Nc, Nc, 1, 1);
     cs_cl *epszzmat = cs_cl_spalloc(Nc, Nc, Nc, 1, 1);
     // Define diagonal entries with mu vectors
-    for (int i=0; i<Nc; i++){
-        cserr = cs_cl_entry(muxxmat, i, i, 1/muxx[i]);
-        if (cserr != 1) {fprintf(stderr, "Error encountered in cs_entry for muxx.\n"); exit(EXIT_FAILURE);}
-        cserr = cs_cl_entry(muyymat, i, i, 1/muyy[i]);
-        if (cserr != 1) {fprintf(stderr, "Error encountered in cs_entry for muyy.\n"); exit(EXIT_FAILURE);}
-        cserr = cs_cl_entry(epszzmat, i, i, epszz[i]);
-        if (cserr != 1) {fprintf(stderr, "Error encountered in cs_entry for epszz.\n"); exit(EXIT_FAILURE);}
+    for (int i=0; i<NX; i++){
+        for (int j=0; j<NY; j++) {
+            cserr = cs_cl_entry(muxxmat, i+j*NX, i+j*NX, 1/muxx[i+j*NX]);
+            if (cserr != 1) {fprintf(stderr, "Error encountered in cs_entry for muxx.\n"); exit(EXIT_FAILURE);}
+            cserr = cs_cl_entry(muyymat, i+j*NX, i+j*NX, 1/muyy[i+j*NX]);
+            if (cserr != 1) {fprintf(stderr, "Error encountered in cs_entry for muyy.\n"); exit(EXIT_FAILURE);}
+            cserr = cs_cl_entry(epszzmat, i+j*NX, i+j*NX, epszz[i+j*NX]);
+            if (cserr != 1) {fprintf(stderr, "Error encountered in cs_entry for epszz.\n"); exit(EXIT_FAILURE);}
+        }
     }
+
     // Compress format for multiplication
     muxxmat = cs_cl_compress(muxxmat);
     muyymat = cs_cl_compress(muyymat);
@@ -191,23 +223,22 @@ void defineQ(int SFx){
     for (int i=0; i<NX; i++){
         for (int j=0; j<NY; j++) {
             if (i<SFx) {
-                q[i*NY+j] = 1.0;
+                q[i+j*NX] = 1.0;
             }
             else {
-                q[i*NY+j] = 0.0;
+                q[i+j*NX] = 0.0;
             }
+            cserr = cs_cl_entry(Q, i+j*NX, i+j*NX, q[i+j*NX]);
+            if (cserr != 1) {fprintf(stderr, "Error encountered in cs_entry for Q.\n"); exit(EXIT_FAILURE);}
         }
     }
-    for (int i=0; i<Nc; i++) {
-        cserr = cs_cl_entry(Q, i, i, q[i]);
-        if (cserr != 1) {fprintf(stderr, "Error encountered in cs_entry for Q.\n"); exit(EXIT_FAILURE);}
-    }
+
     cvecprint("data/q.csv", q, Nc);
     Q = cs_cl_compress(Q);
 
     #ifdef VERBOSE
         printf("===============\nQ\n");
-        cs_cl_print(Q, 0);
+        cs_cl_print(Q, 1);
     #endif
 }
 
@@ -250,9 +281,9 @@ cs_complex_t *anderson(int m, cs_complex_t *ez0, float tol){
 
 
 // --- Define Newton algorithm ---
-cs_complex_t *newtonsol(cs_complex_t *ez0, float tol){
+cs_complex_t *newtonsol(cs_complex_t *ez0, double tol){
     int n = 0; // Iteration number
-    float res = 1; // Residual
+    double res = 1; // Residual
     cs_complex_t *ez1; // Updated guess
     
     ez1 = nloperator(ez0);
@@ -274,14 +305,14 @@ int main ()
     Q = cs_cl_spalloc(Nc, Nc, Nc, 1, 1);
 
     // --- Define source parameters ---
-    float omeg = 9.4248e+14; // source frequency
-    float thetai = 0.0; // source angle
-    float k0 = omeg / C0; // source wave number
-    float kx = k0 * cos(thetai); 
-    float ky = k0 * sin(thetai);
+    double omeg = 9.4248e+14; // source frequency
+    double thetai = 0.0; // source angle
+    double k0 = omeg / C0; // source wave number
+    double kx = k0 * cos(thetai); 
+    double ky = k0 * sin(thetai);
 
     // --- Define derived domain variables ---
-    float Wy = NY * DY; // width of y domain (for Floquet)
+    double Wy = NY * DY; // width of y domain (for Floquet)
     int SFx = LX + BX;
 
     FILE *fp;
@@ -323,7 +354,7 @@ int main ()
     Dxh = cs_cl_scale(Dxh, -1.0);
     Dyh = cs_cl_scale(Dyh, -1.0);
 
-    cs_cl_print(Dxh, 1);
+    //cs_cl_print(Dxh, 1);
 
     // --- Define total linear operator ---
     printf("Defining linear operator Ae.\n");
@@ -334,17 +365,40 @@ int main ()
     defineQ(SFx);
 
     // --- Use masking matrix to find source vector ---
-    cs_cl_gaxpy(cs_cl_add(cs_cl_multiply(Q, Ae), cs_cl_multiply(Ae, Q), 1.0, -1.0), fsrc, b);
+    cs_cl *M = cs_cl_spalloc(Nc, Nc, 5*Nc, 1, 0);
+    M = cs_cl_add(cs_cl_multiply(Q, Ae), cs_cl_multiply(Ae, Q), 1.0, -1.0);
+    cs_cl_dropzeros(M);
+    cs_cl_print(M, 1);
+    cs_cl_gaxpy(M, fsrc, b);
+    
+    /* Simple bandaid
+    cs_complex_t tmp;
+    for (int j=0; j<NY; j++){
+        tmp = b[(j+1)*NX-1];
+        b[(j+1)*NX-1] = -1.0*creal(b[j*NX]) + I*cimag(b[j*NX]);
+        b[j*NX] = -1.0*creal(tmp) + I*cimag(tmp);
+
+        tmp = b[SFx-1 + j*NX];
+        b[SFx-1 + j*NX] = -1.0*creal(b[SFx + j*NX]) + I*cimag(b[SFx + j*NX]);
+        b[SFx + j*NX] = -1.0*creal(tmp) + I*cimag(tmp);
+    }
+    */
+
     printf("Source vector found. Printing.. \n");
     cvecprint("data/b.csv", b, Nc);
     printf("Finished printing. \n");
 
+    #ifdef INCHECK
+        printf("Input check only. Solver not invoked!\n");
+        exit(EXIT_SUCCESS);
+    #endif
+
     // --- Set tolerance and solve system with LU factorization ---
-    double tol = 1;
+    double tol = 1.0;
     int cserr;
     printf("Solving system.\n");
-    cserr = cs_cl_qrsol(3, Ae, b);
-    if (cserr != 1) {fprintf(stderr, "Error encountered in LU solve.\n"); exit(EXIT_FAILURE);}
+    cserr = cs_cl_lusol(3, Ae, b, tol);
+    if (cserr != 1) {fprintf(stderr, "Error encountered in solver.\n"); exit(EXIT_FAILURE);}
     printf("System solved.\n");
 
     // --- Print output for further plotting/analysis ---

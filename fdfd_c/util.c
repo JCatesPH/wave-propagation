@@ -28,7 +28,7 @@ void cvecprint(char* path, cs_complex_t *vec, int length){
     FILE *fp;
     fp = fopen(path, "w");
     for (int i=0; i<length; i++) {
-        fprintf(fp, "%12.9e, %+12.9e\n", creal(vec[i]), cimag(vec[i]));
+        fprintf(fp, "%12.9e, %12.9e\n", creal(vec[i]), cimag(vec[i]));
     }
 }
 
