@@ -64,28 +64,34 @@ int epszzfunc(double epsr){
                 sigx = sigmax * pow(sin(PI*frac/2.0), 2.0);
                 sx[i] = s0x * (1.0 - 1i * ETA0 * sigx);
                 // epszz[i+j*NX] = sx[i];
-                if (i < idx1 || i > idx2) {
-                    ierr = VecSetValue(epszz, i+j*NX, sx[i], INSERT_VALUES); CHKERRQ(ierr);
-                }
-                else {
-                    ierr = VecSetValue(epszz, i+j*NX, epsr*sx[i], INSERT_VALUES); CHKERRQ(ierr);
-                }
-
-                
+                ierr = VecSetValue(epszz, i+j*NX, sx[i], INSERT_VALUES); CHKERRQ(ierr);
             }
             else if (i > NX-LX) {
-                //epszz[i+j*NX] = sx[NX-i-1];
-                //ierr = VecSetValue(epszz, i+j*NX, sx[NX-1-i], INSERT_VALUES); CHKERRQ(ierr);
-                if (i < idx1 || i > idx2) {
-                    ierr = VecSetValue(epszz, i+j*NX, sx[NX-1-i], INSERT_VALUES); CHKERRQ(ierr);
-                }
-                else {
-                    ierr = VecSetValue(epszz, i+j*NX, epsr*sx[NX-1-i], INSERT_VALUES); CHKERRQ(ierr);
-                }
+                ierr = VecSetValue(epszz, i+j*NX, sx[NX-1-i], INSERT_VALUES); CHKERRQ(ierr);
             }
+            // --- Sets the rel perm in slab ---
             else if (i > idx1 && i < idx2) {
                 ierr = VecSetValue(epszz, i+j*NX, epsr, INSERT_VALUES); CHKERRQ(ierr);
             }
+        }
+    }
+
+    // --- Index matching ---
+    double r1 = 1;
+    for (int i = idx1 - 10; i < idx1 + 10; i++){
+        for (int j=0; j<NY; j++) {
+            // Sigmoid function: S[x_] := (eps2 - eps1)/(1 + Exp[-5 x]) + eps1
+            ierr = VecSetValue(epszz, i+j*NX, 
+                (epsr - 1) / ( 1 + exp(-r1 * (i - idx1)) ) + 1, 
+                INSERT_VALUES); CHKERRQ(ierr);
+        }
+    }
+    for (int i = idx2 - 10; i < idx2 + 10; i++){
+        for (int j=0; j<NY; j++) {
+            // Sigmoid function: S[x_] := (eps2 - eps1)/(1 + Exp[-5 x]) + eps1
+            ierr = VecSetValue(epszz, i+j*NX, 
+                (epsr - 1) / ( 1 + exp(r1 * (i - idx2)) ) + 1, 
+                INSERT_VALUES); CHKERRQ(ierr);
         }
     }
 
@@ -175,7 +181,7 @@ int defineQ(int SFx){
     ierr = VecSet(q, 0.0+1i*0.0);CHKERRQ(ierr);
     for (int i=0; i<NX; i++){
         for (int j=0; j<NY; j++) {
-            if (i < SFx || i > NX - SFx) {
+            if (i < SFx) {
                 ierr = VecSetValue(q, i+j*NX, 1.0+1i*0.0, INSERT_VALUES); CHKERRQ(ierr);
             }
         }

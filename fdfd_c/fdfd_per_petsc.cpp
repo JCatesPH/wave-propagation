@@ -4,7 +4,6 @@ using namespace std;
 
 //#define VERBOSE // Uncomment to print additional debugging messages.
 //#define INCHECK // Uncomment to exit before solver is invoked. For checking inputs.
-
 const int Nc = NX*NY;
 Vec b_SFTF, fsrc; // Source vector
 Vec b_NL1, b_NL2; // Nonlinear source terms
@@ -16,7 +15,6 @@ Mat Ae1, Ae2; // Linear operators for first and second harmonic
 Mat Q; // Masking matrix for SF/TF
 
 static char help[] = "[Empty help message]\n\n";
-
 
 // ------- MAIN -------
 int main (int argc, char **args)
@@ -66,17 +64,9 @@ int main (int argc, char **args)
     ierr = VecSetSizes(ez_1cc,PETSC_DECIDE,Nc); CHKERRQ(ierr);
     ierr = VecSetFromOptions(ez_1cc);CHKERRQ(ierr);
 
-    ierr = VecCreate(PETSC_COMM_WORLD,&res1); CHKERRQ(ierr);
-    ierr = VecSetSizes(res1,PETSC_DECIDE,Nc); CHKERRQ(ierr);
-    ierr = VecSetFromOptions(res1);CHKERRQ(ierr);
-
     ierr = VecCreate(PETSC_COMM_WORLD,&ez_2); CHKERRQ(ierr);
     ierr = VecSetSizes(ez_2,PETSC_DECIDE,Nc); CHKERRQ(ierr);
     ierr = VecSetFromOptions(ez_2);CHKERRQ(ierr);
-
-    ierr = VecCreate(PETSC_COMM_WORLD,&res2); CHKERRQ(ierr);
-    ierr = VecSetSizes(res2,PETSC_DECIDE,Nc); CHKERRQ(ierr);
-    ierr = VecSetFromOptions(res2);CHKERRQ(ierr);
 
     ierr = VecCreate(PETSC_COMM_WORLD,&ez_21); CHKERRQ(ierr);
     ierr = VecSetSizes(ez_21,PETSC_DECIDE,Nc); CHKERRQ(ierr);
@@ -148,7 +138,7 @@ int main (int argc, char **args)
     
     PetscPrintf(MPI_COMM_WORLD,"Defining linear operator Ae2.\n");
     epszzfunc(epsr2);
-    defineAe(&Ae2, 2*k0, ky, Wy);
+    defineAe(&Ae2, 2*k0, 2*ky, Wy);
 
     // --- Assemble operators ---
     ierr = MatAssemblyBegin(Ae1, MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
@@ -194,79 +184,104 @@ int main (int argc, char **args)
 
     #ifdef INCHECK
         PetscPrintf(MPI_COMM_WORLD,"Input check only. Solver not invoked!\n");
+        ierr = PetscFinalize(); CHKERRQ(ierr);
         exit(EXIT_SUCCESS);
     #endif
 
     // --- Set tolerance and initialize solvers ---
-    ierr = KSPCreate(PETSC_COMM_WORLD, &ksp1);CHKERRQ(ierr);
-    ierr = KSPSetOperators(ksp1, Ae1, Ae1);CHKERRQ(ierr);
+    ierr = KSPCreate(PETSC_COMM_WORLD, &ksp1); CHKERRQ(ierr);
+    ierr = KSPSetOperators(ksp1, Ae1, Ae1); CHKERRQ(ierr);
+    ierr = KSPSetType(ksp1, KSPGMRES); CHKERRQ(ierr);
     ierr = KSPSetTolerances(ksp1,1.e-5,PETSC_DEFAULT,PETSC_DEFAULT,PETSC_DEFAULT);CHKERRQ(ierr);
     ierr = KSPSetFromOptions(ksp1);CHKERRQ(ierr);
 
     ierr = KSPCreate(PETSC_COMM_WORLD, &ksp2); CHKERRQ(ierr);
     ierr = KSPSetOperators(ksp2, Ae2, Ae2); CHKERRQ(ierr);
+    ierr = KSPSetType(ksp2, KSPGMRES); CHKERRQ(ierr);
     ierr = KSPSetTolerances(ksp2,1.e-5,PETSC_DEFAULT,PETSC_DEFAULT,PETSC_DEFAULT); CHKERRQ(ierr);
     ierr = KSPSetFromOptions(ksp2); CHKERRQ(ierr);
 
-    PetscPrintf(MPI_COMM_WORLD,"Solving linear system.. \n\n");
+    // ----- Initial solution found.
+    // ------------------------------
+    PetscPrintf(MPI_COMM_WORLD,"Solving linear system.. \n");
 
     ierr = KSPSolve(ksp1, b_SFTF, ez_1); CHKERRQ(ierr);
     ierr = KSPView(ksp1, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
 
-    PetscPrintf(MPI_COMM_WORLD,"\n\nSystem solved. Finding generated harmonic field.\n");
+    PetscPrintf(MPI_COMM_WORLD,"System solved. Finding generated harmonic field.\n");
 
-    // --- Computes b_{NL,2\omega} = -d_{33} e_{z,\omega} \times e_{z,\omega}
+    // --- Computes: b_{NL,2\omega} = -d_{33} e_{z,\omega} \times e_{z,\omega}
     VecPointwiseMult(b_NL2, ez_1, ez_1);
-
-    PetscViewerFileSetName(lab,"data/Ez_om.csv");
-    VecView(ez_1, lab);
-
     VecScale(b_NL2, -d33);
 
     VecAssemblyBegin(b_NL2);
     VecAssemblyEnd(b_NL2);
 
-    PetscPrintf(MPI_COMM_WORLD,"Saving nonlinear source vector, b_NL2.\n");
-    
-    PetscViewerFileSetName(lab,"data/b_NL2.csv");
-    VecView(b_NL2, lab);
-
     // --- Solves for second-harmonic field ---
-    PetscPrintf(MPI_COMM_WORLD,"\nSolving second-harmonic system.\n");
+    PetscPrintf(MPI_COMM_WORLD,"Solving second-harmonic system.\n");
     ierr = KSPSolve(ksp2, b_NL2, ez_2); CHKERRQ(ierr);
-    ierr = KSPView(ksp2, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
+    //ierr = KSPView(ksp2, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
 
-    PetscPrintf(MPI_COMM_WORLD,"\n\nSystem solved. Finding b_NL1.\n");
+    // --- Computes: b_{NL,\omega} = -2 d_{33} e_{z,2\omega} \times e_{z,\omega}^*
+    PetscPrintf(MPI_COMM_WORLD,"System solved. Finding b_NL1.\n");
     VecCopy(ez_1, ez_1cc);
     VecConjugate(ez_1cc);
     VecPointwiseMult(b_NL1, ez_2, ez_1cc);
     VecScale(b_NL1, -2*d33);
-
-    VecAssemblyBegin(b_NL1);
-    VecAssemblyEnd(b_NL1);
-
-    PetscPrintf(MPI_COMM_WORLD,"Saving nonlinear source vector, b_NL1.\n");
-    PetscViewerFileSetName(lab,"data/b_NL1.csv");
-    VecView(b_NL1, lab);
-
-    // --- Refine solution and check norm ---
-    VecCopy(ez_1, ez_11);
-    VecAXPY(b_NL1, 1.0, b_SFTF);
-    VecAssemblyBegin(b_NL1);
-    VecAssemblyEnd(b_NL1);
-    ierr = KSPSolve(ksp1, b_NL1, ez_1); CHKERRQ(ierr);
+    // -------------------------------
     
-    VecAXPY(ez_11, -1.0, ez_1);
-
+    
+    PetscPrintf(MPI_COMM_WORLD,"\nEntering loop.. \n\n");
     double resnorm;
-    ierr = VecNorm(ez_11, NORM_INFINITY, &resnorm);
-    PetscPrintf(PETSC_COMM_WORLD,"L_inf Norm of residual vector: %g\n", resnorm);
-    ierr = VecNorm(ez_11, NORM_2, &resnorm);
-    PetscPrintf(PETSC_COMM_WORLD,"L_2 Norm of residual vector: %g\n", resnorm);
+    // --- Main loop of iterations ---
+    for (int i = 0; i<2; i++){
+        // --- Make copy for checking norm. ---
+        VecCopy(ez_1, ez_11);
 
+        VecAssemblyBegin(ez_11);
+        VecAssemblyEnd(ez_11);
 
+        // --- Add rhs vectors and solve ---
+        VecAXPY(b_NL1, 1.0, b_SFTF);
+
+        VecAssemblyBegin(b_NL1);
+        VecAssemblyEnd(b_NL1);
+
+        PetscPrintf(MPI_COMM_WORLD,"  Solving linear system.. \n");
+
+        ierr = KSPSolve(ksp1, b_SFTF, ez_1); CHKERRQ(ierr);
+        //ierr = KSPView(ksp1, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
+
+        PetscPrintf(MPI_COMM_WORLD,"  System solved. Finding b_NL2.\n");
+
+        // --- Computes: b_{NL,2\omega} = -d_{33} e_{z,\omega} \times e_{z,\omega}
+        VecPointwiseMult(b_NL2, ez_1, ez_1);
+        VecScale(b_NL2, -d33);
+
+        VecAssemblyBegin(b_NL2);
+        VecAssemblyEnd(b_NL2);
+
+        // --- Solves for second-harmonic field ---
+        PetscPrintf(MPI_COMM_WORLD,"  Solving second-harmonic system.\n");
+        ierr = KSPSolve(ksp2, b_NL2, ez_2); CHKERRQ(ierr);
+        //ierr = KSPView(ksp2, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
+
+        // --- Computes: b_{NL,\omega} = -2 d_{33} e_{z,2\omega} \times e_{z,\omega}^*
+        PetscPrintf(MPI_COMM_WORLD,"  System solved. Finding b_NL1.\n");
+        VecCopy(ez_1, ez_1cc);
+        VecConjugate(ez_1cc);
+        VecPointwiseMult(b_NL1, ez_2, ez_1cc);
+        VecScale(b_NL1, -2*d33);
+
+        // --- Check residual norm ---
+        VecAXPY(ez_11, -1.0, ez_1);
+        ierr = VecNorm(ez_11, NORM_INFINITY, &resnorm);
+        PetscPrintf(PETSC_COMM_WORLD,"L_inf Norm of residual vector: %.3f\n", resnorm);
+    }
+    
+    
     // --- Print output for further plotting/analysis ---
-    PetscViewerFileSetName(lab,"data/Ez_om_2.csv");
+    PetscViewerFileSetName(lab,"data/Ez_om.csv");
     VecView(ez_1, lab);
 
     PetscViewerFileSetName(lab,"data/Ez_2om.csv");
@@ -281,7 +296,9 @@ int main (int argc, char **args)
     ierr = VecDestroy(&b_NL2); CHKERRQ(ierr);
     ierr = VecDestroy(&ez_1); CHKERRQ(ierr);
     ierr = VecDestroy(&ez_2); CHKERRQ(ierr);
-
+    ierr = VecDestroy(&ez_1cc); CHKERRQ(ierr);
+    ierr = VecDestroy(&ez_11); CHKERRQ(ierr);
+    ierr = VecDestroy(&ez_21); CHKERRQ(ierr);
     ierr = KSPDestroy(&ksp1); CHKERRQ(ierr);
     ierr = KSPDestroy(&ksp2); CHKERRQ(ierr);
 

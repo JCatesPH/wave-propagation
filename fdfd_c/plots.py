@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 
 #%%
 nprocs = 8
-nx = 1000
-ny = 201
+nx = 2000
+ny = 101
 
 #%% Read in output
 df = pd.read_csv('data/X.csv', header=None)
@@ -33,7 +33,7 @@ epszz = filterprocs(epszz, nprocs)
 epszz = np.reshape(epszz.astype(complex), (ny,nx))
 
 #%%
-plt.contourf(X, Y, np.abs(epszz))
+plt.contourf(X, Y, np.abs(epszz), 50)
 plt.title(r'Magnitude of relative permittivity, $|\varepsilon_{zz}|$')
 plt.colorbar()
 plt.show()
@@ -114,3 +114,7 @@ plt.title(r'Solution, $E_z(2\omega)$')
 plt.colorbar()
 plt.show()
 plt.savefig('figs/Ez_2om.png')
+
+
+
+# %%
