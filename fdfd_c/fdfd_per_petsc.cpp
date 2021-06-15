@@ -120,7 +120,7 @@ int main (int argc, char **args)
     int SFx = LX + BX;
 
     // --- Define and save the permittivity and permeability tensors ---
-    epszzfunc(epsr1);
+    epszzfunc(epsr1, epsr1);
     mufunc();
 
     PetscViewerFileSetName(lab,"data/epszz.csv");
@@ -137,7 +137,7 @@ int main (int argc, char **args)
     defineAe(&Ae1, k0, ky, Wy);
     
     PetscPrintf(MPI_COMM_WORLD,"Defining linear operator Ae2.\n");
-    epszzfunc(epsr2);
+    epszzfunc(epsr2, epsr2);
     defineAe(&Ae2, 2*k0, 2*ky, Wy);
 
     // --- Assemble operators ---
@@ -192,13 +192,13 @@ int main (int argc, char **args)
     ierr = KSPCreate(PETSC_COMM_WORLD, &ksp1); CHKERRQ(ierr);
     ierr = KSPSetOperators(ksp1, Ae1, Ae1); CHKERRQ(ierr);
     ierr = KSPSetType(ksp1, KSPGMRES); CHKERRQ(ierr);
-    ierr = KSPSetTolerances(ksp1,1.e-5,PETSC_DEFAULT,PETSC_DEFAULT,PETSC_DEFAULT);CHKERRQ(ierr);
+    ierr = KSPSetTolerances(ksp1, 1.e-7, 1e-10, PETSC_DEFAULT, PETSC_DEFAULT); CHKERRQ(ierr);
     ierr = KSPSetFromOptions(ksp1);CHKERRQ(ierr);
 
     ierr = KSPCreate(PETSC_COMM_WORLD, &ksp2); CHKERRQ(ierr);
     ierr = KSPSetOperators(ksp2, Ae2, Ae2); CHKERRQ(ierr);
     ierr = KSPSetType(ksp2, KSPGMRES); CHKERRQ(ierr);
-    ierr = KSPSetTolerances(ksp2,1.e-5,PETSC_DEFAULT,PETSC_DEFAULT,PETSC_DEFAULT); CHKERRQ(ierr);
+    ierr = KSPSetTolerances(ksp2, 1.e-7, 1e-10, PETSC_DEFAULT, PETSC_DEFAULT); CHKERRQ(ierr);
     ierr = KSPSetFromOptions(ksp2); CHKERRQ(ierr);
 
     // ----- Initial solution found.
@@ -214,6 +214,13 @@ int main (int argc, char **args)
     VecPointwiseMult(b_NL2, ez_1, ez_1);
     VecScale(b_NL2, -d33);
 
+    for (int j = 0; j < NY; j++){
+        for (int i = 0; i < idx1; i++){
+            ierr = VecSetValue(b_NL2, i+j*NX, 0.0, INSERT_VALUES); CHKERRQ(ierr);
+        }
+    }
+    
+
     VecAssemblyBegin(b_NL2);
     VecAssemblyEnd(b_NL2);
 
@@ -228,18 +235,28 @@ int main (int argc, char **args)
     VecConjugate(ez_1cc);
     VecPointwiseMult(b_NL1, ez_2, ez_1cc);
     VecScale(b_NL1, -2*d33);
+
+    for (int j = 0; j < NY; j++){
+        for (int i = 0; i < idx1; i++){
+            ierr = VecSetValue(b_NL1, i+j*NX, 0.0, INSERT_VALUES); CHKERRQ(ierr);
+        }
+    }
     // -------------------------------
     
     
     PetscPrintf(MPI_COMM_WORLD,"\nEntering loop.. \n\n");
     double resnorm;
     // --- Main loop of iterations ---
-    for (int i = 0; i<2; i++){
+    for (int i = 0; i < 2; i++){
         // --- Make copy for checking norm. ---
         VecCopy(ez_1, ez_11);
 
+        VecCopy(ez_2, ez_21);
+
         VecAssemblyBegin(ez_11);
         VecAssemblyEnd(ez_11);
+        VecAssemblyBegin(ez_21);
+        VecAssemblyEnd(ez_21);
 
         // --- Add rhs vectors and solve ---
         VecAXPY(b_NL1, 1.0, b_SFTF);
@@ -258,6 +275,12 @@ int main (int argc, char **args)
         VecPointwiseMult(b_NL2, ez_1, ez_1);
         VecScale(b_NL2, -d33);
 
+        for (int j = 0; j < NY; j++){
+            for (int i = 0; i < idx1; i++){
+                ierr = VecSetValue(b_NL2, i+j*NX, 0.0, INSERT_VALUES); CHKERRQ(ierr);
+            }
+        }
+
         VecAssemblyBegin(b_NL2);
         VecAssemblyEnd(b_NL2);
 
@@ -273,10 +296,20 @@ int main (int argc, char **args)
         VecPointwiseMult(b_NL1, ez_2, ez_1cc);
         VecScale(b_NL1, -2*d33);
 
+        for (int j = 0; j < NY; j++){
+            for (int i = 0; i < idx1; i++){
+                ierr = VecSetValue(b_NL1, i+j*NX, 0.0, INSERT_VALUES); CHKERRQ(ierr);
+            }
+        }
+
         // --- Check residual norm ---
         VecAXPY(ez_11, -1.0, ez_1);
         ierr = VecNorm(ez_11, NORM_INFINITY, &resnorm);
-        PetscPrintf(PETSC_COMM_WORLD,"L_inf Norm of residual vector: %.3f\n", resnorm);
+        PetscPrintf(PETSC_COMM_WORLD,"L_inf Norm of residual om:  %.3e\n", resnorm);
+
+        VecAXPY(ez_21, -1.0, ez_2);
+        ierr = VecNorm(ez_21, NORM_INFINITY, &resnorm);
+        PetscPrintf(PETSC_COMM_WORLD,"L_inf Norm of residual 2om: %.3e\n", resnorm);
     }
     
     

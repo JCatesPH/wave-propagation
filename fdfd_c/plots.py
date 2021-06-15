@@ -1,12 +1,21 @@
 #%%
+import sys
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
+
 #%%
-nprocs = 8
-nx = 2000
-ny = 101
+
+if len(sys.argv) > 2:
+    nprocs = int(sys.argv[1])
+    nx = int(sys.argv[2])
+    ny = int(sys.argv[3])  
+else:
+    nprocs = 8
+    nx = 1000
+    ny = 101
+
 
 #%% Read in output
 df = pd.read_csv('data/X.csv', header=None)
@@ -33,10 +42,14 @@ epszz = filterprocs(epszz, nprocs)
 epszz = np.reshape(epszz.astype(complex), (ny,nx))
 
 #%%
+plt.clf()
 plt.contourf(X, Y, np.abs(epszz), 50)
-plt.title(r'Magnitude of relative permittivity, $|\varepsilon_{zz}|$')
+plt.title(r'Magnitude of relative permittivity')
+plt.ticklabel_format(axis='both', style='sci', scilimits=(0,0))
+plt.xlabel(r'$x$ [m]')
+plt.ylabel(r'$y$ [m]')
 plt.colorbar()
-plt.show()
+#plt.show()
 plt.savefig('figs/epszz.png')
 
 # %%
@@ -48,10 +61,13 @@ Q = filterprocs(Q, nprocs)
 Q = np.reshape(Q.astype(complex), (ny,nx))
 
 #%%
+plt.clf()
 plt.contourf(X, Y, np.abs(Q))
 plt.title(r'Masking matrix, $Q$')
-plt.colorbar()
-plt.show()
+plt.ticklabel_format(axis='both', style='sci', scilimits=(0,0))
+plt.xlabel(r'$x$ [m]')
+plt.ylabel(r'$y$ [m]')
+#plt.show()
 plt.savefig('figs/Q.png')
 
 # %%
@@ -63,10 +79,14 @@ src = filterprocs(src, nprocs)
 src = np.reshape(src.astype(complex), (ny,nx))
 
 #%%
-plt.contourf(X, Y, np.real(src))
+plt.clf()
+plt.contourf(X, Y, np.real(src), 50)
 plt.title(r'Source, Re[$f_{src}(x,y)$]')
+plt.ticklabel_format(axis='both', style='sci', scilimits=(0,0))
+plt.xlabel(r'$x$ [m]')
+plt.ylabel(r'$y$ [m]')
 plt.colorbar()
-plt.show()
+#plt.show()
 plt.savefig('figs/fsrc.png')
 
 # %%
@@ -78,43 +98,97 @@ b = filterprocs(b, nprocs)
 b = np.reshape(b.astype(complex), (ny,nx))
 
 #%%
-plt.contourf(X, Y, np.abs(b))
+plt.clf()
+plt.contourf(X, Y, np.abs(b), 50)
 plt.title(r'Reshaped source vector, $|\mathbf{b}|$')
+plt.ticklabel_format(axis='both', style='sci', scilimits=(0,0))
+plt.xlabel(r'$x$ [m]')
+plt.ylabel(r'$y$ [m]')
 plt.colorbar()
-plt.show()
+#plt.show()
 plt.savefig('figs/b.png')
 
 
 #%%
 df = pd.read_csv('data/Ez_om.csv', header=None, skiprows=2, delimiter=',')
-Ez = df.values[:,0].astype(str)
-Ez = np.char.replace(Ez,'i','j')
-Ez = np.char.replace(Ez,' ','')
-Ez = filterprocs(Ez, nprocs)
-Ez = np.reshape(Ez.astype(complex), (ny,nx))
+Ez1 = df.values[:,0].astype(str)
+Ez1 = np.char.replace(Ez1,'i','j')
+Ez1 = np.char.replace(Ez1,' ','')
+Ez1 = filterprocs(Ez1, nprocs)
+Ez1 = np.reshape(Ez1.astype(complex), (ny,nx))
 
 #%%
-plt.contourf(X, Y, np.real(Ez), 50)
+plt.clf()
+plt.contourf(X, Y, np.real(Ez1), 50)
 plt.title(r'Solution, $E_z(\omega)$')
+plt.ticklabel_format(axis='both', style='sci', scilimits=(0,0))
+plt.xlabel(r'$x$ [m]')
+plt.ylabel(r'$y$ [m]')
 plt.colorbar()
-plt.show()
+#plt.show()
 plt.savefig('figs/Ez_om.png')
 
 #%%
 df = pd.read_csv('data/Ez_2om.csv', header=None, skiprows=2, delimiter=',')
-Ez = df.values[:,0].astype(str)
-Ez = np.char.replace(Ez,'i','j')
-Ez = np.char.replace(Ez,' ','')
-Ez = filterprocs(Ez, nprocs)
-Ez = np.reshape(Ez.astype(complex), (ny,nx))
+Ez2 = df.values[:,0].astype(str)
+Ez2 = np.char.replace(Ez2,'i','j')
+Ez2 = np.char.replace(Ez2,' ','')
+Ez2 = filterprocs(Ez2, nprocs)
+Ez2 = np.reshape(Ez2.astype(complex), (ny,nx))
 
 #%%
-plt.contourf(X, Y, np.real(Ez), 50)
+plt.clf()
+plt.contourf(X, Y, np.real(Ez2), 50)
 plt.title(r'Solution, $E_z(2\omega)$')
+plt.ticklabel_format(axis='both', style='sci', scilimits=(0,0))
+plt.xlabel(r'$x$ [m]')
+plt.ylabel(r'$y$ [m]')
 plt.colorbar()
-plt.show()
+#plt.show()
 plt.savefig('figs/Ez_2om.png')
 
 
+
+# %% Calculate conversion efficiency
+n_om = np.abs(Ez1) / (2.156*np.abs(src))
+n_2om = np.abs(Ez2) / (2.156*np.abs(src))
+
+#%%
+plt.clf()
+fig, ax = plt.subplots(2)
+#fig.suptitle('Conversion efficiency')
+ax[0].plot(X, n_om[int(n_om.shape[0]/2),:])
+ax[0].set_title('Conversion efficiency for first harmonic, $\eta_{\omega}$')
+
+ax[1].plot(X, n_2om[int(n_om.shape[0]/2),:])
+ax[1].set_title('Conversion efficiency for second harmonic, $\eta_{2\omega}$')
+
+ax[0].ticklabel_format(axis='both', style='sci', scilimits=(0,0))
+ax[1].ticklabel_format(axis='both', style='sci', scilimits=(0,0))
+
+ax[1].set_xlabel(r'Sample length [$\mu$m]')
+
+plt.tight_layout()
+#plt.show()
+plt.savefig('figs/conv-eff.png')
+
+# %%
+plt.clf()
+fig, ax = plt.subplots(2)
+#fig.suptitle('Conversion efficiency')
+ax[0].plot(X[600:-50]*1e6, n_om[int(n_om.shape[0]/2), 600:-50])
+ax[0].set_title('Conversion efficiency for first harmonic, $\eta_{\omega}$')
+
+ax[1].plot(X[600:-50]*1e6, n_2om[int(n_om.shape[0]/2), 600:-50])
+ax[1].set_title('Conversion efficiency for second harmonic, $\eta_{2\omega}$')
+
+ax[0].ticklabel_format(axis='both', style='sci', scilimits=(0,0))
+ax[1].ticklabel_format(axis='both', style='sci', scilimits=(0,0))
+
+ax[1].set_xlabel(r'Sample length [$\mu$m]')
+
+plt.tight_layout()
+#plt.show()
+plt.savefig('figs/conv-eff_inSHG.png')
 
 # %%

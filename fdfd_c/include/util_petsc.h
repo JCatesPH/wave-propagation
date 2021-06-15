@@ -50,7 +50,7 @@ static const double thetai = 0.0; // source angle
 
 // --- Declare utility functions ---
 int fsource(double A0, double kx, double ky);
-int epszzfunc(double epsr);
+int epszzfunc(double epsr0, double epsr1);
 int mufunc();
 int finitediffs(double k0, double ky, double Wy);
 int defineQ(int SFx);

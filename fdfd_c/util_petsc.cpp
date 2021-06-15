@@ -45,33 +45,40 @@ int fsource(double A0, double kx, double ky){
 }
 
 // --- Define permittivity function ---
-int epszzfunc(double epsr){
+int epszzfunc(double eps_0, double eps_1){
     PetscErrorCode ierr;
     double sigmax = -(SX_P + 1) * log(SX_R) / (2 * ETA0 * LX);
     #ifdef VERBOSE
         PetscPrintf(MPI_COMM_WORLD,"sigmax = %f\n", sigmax);
     #endif
     double frac, s0x, sigx;
+    double eps_tmp;
 
     // Define PML region and change eps accordingly.
     PetscPrintf(MPI_COMM_WORLD,"Defining permittivity tensor.\n");
     for (int i=0; i<NX; i++){
         for (int j=0; j<NY; j++) {
-            //printf("%d, %d\n", i, j);
+            // Choose rel perm based on location on z-axis
+            if (i > idx1 && i < idx2) {
+                eps_tmp = eps_1;
+            }
+            else {
+                eps_tmp = eps_0;
+            }
+
+            // Check if in PML and set value
             if (i < LX) {
                 frac = (double) (LX-i)/LX;
                 s0x = 1.0 + SX_M * pow(frac, SX_P);
                 sigx = sigmax * pow(sin(PI*frac/2.0), 2.0);
                 sx[i] = s0x * (1.0 - 1i * ETA0 * sigx);
-                // epszz[i+j*NX] = sx[i];
-                ierr = VecSetValue(epszz, i+j*NX, sx[i], INSERT_VALUES); CHKERRQ(ierr);
+                ierr = VecSetValue(epszz, i+j*NX, eps_tmp * sx[i], INSERT_VALUES); CHKERRQ(ierr);
             }
             else if (i > NX-LX) {
-                ierr = VecSetValue(epszz, i+j*NX, sx[NX-1-i], INSERT_VALUES); CHKERRQ(ierr);
+                ierr = VecSetValue(epszz, i+j*NX, eps_tmp * sx[NX-1-i], INSERT_VALUES); CHKERRQ(ierr);
             }
-            // --- Sets the rel perm in slab ---
-            else if (i > idx1 && i < idx2) {
-                ierr = VecSetValue(epszz, i+j*NX, epsr, INSERT_VALUES); CHKERRQ(ierr);
+            else {
+                ierr = VecSetValue(epszz, i+j*NX, eps_tmp, INSERT_VALUES); CHKERRQ(ierr);
             }
         }
     }
@@ -81,17 +88,21 @@ int epszzfunc(double epsr){
     for (int i = idx1 - 10; i < idx1 + 10; i++){
         for (int j=0; j<NY; j++) {
             // Sigmoid function: S[x_] := (eps2 - eps1)/(1 + Exp[-5 x]) + eps1
-            ierr = VecSetValue(epszz, i+j*NX, 
-                (epsr - 1) / ( 1 + exp(-r1 * (i - idx1)) ) + 1, 
-                INSERT_VALUES); CHKERRQ(ierr);
+            if (i > 0 && i < NX) {
+                ierr = VecSetValue(epszz, i+j*NX, 
+                    (eps_1 - eps_0) / ( 1 + exp(-r1 * (i - idx1)) ) + eps_0, 
+                    INSERT_VALUES); CHKERRQ(ierr);
+            }
         }
     }
     for (int i = idx2 - 10; i < idx2 + 10; i++){
         for (int j=0; j<NY; j++) {
             // Sigmoid function: S[x_] := (eps2 - eps1)/(1 + Exp[-5 x]) + eps1
-            ierr = VecSetValue(epszz, i+j*NX, 
-                (epsr - 1) / ( 1 + exp(r1 * (i - idx2)) ) + 1, 
-                INSERT_VALUES); CHKERRQ(ierr);
+            if (i > 0 && i < NX) {
+                ierr = VecSetValue(epszz, i+j*NX, 
+                    (eps_1 - eps_0) / ( 1 + exp(r1 * (i - idx2)) ) + eps_0, 
+                    INSERT_VALUES); CHKERRQ(ierr);
+            }
         }
     }
 
