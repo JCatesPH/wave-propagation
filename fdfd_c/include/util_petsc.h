@@ -44,7 +44,7 @@ extern Mat Ae1, Ae2, Q;
 extern const int Nc;
 
 // --- Define source parameters ---
-static const double A0 = 8e6; // Incident FW amplitude [V/m]
+static const double A0 = 4.0e6; // Incident FW amplitude [V/m]
 static const double omeg = 1.7715733e15; // source frequency [1.064 microns]
 static const double thetai = 0.0; // source angle
 

@@ -6,15 +6,11 @@ import matplotlib.pyplot as plt
 
 
 #%%
-
-if len(sys.argv) > 2:
-    nprocs = int(sys.argv[1])
-    nx = int(sys.argv[2])
-    ny = int(sys.argv[3])  
-else:
-    nprocs = 8
-    nx = 1000
-    ny = 101
+nprocs = 8
+nx = 2400
+ny = 101
+idx1 = 320
+idx2 = 2080
 
 
 #%% Read in output
@@ -85,7 +81,8 @@ plt.title(r'Source, Re[$f_{src}(x,y)$]')
 plt.ticklabel_format(axis='both', style='sci', scilimits=(0,0))
 plt.xlabel(r'$x$ [m]')
 plt.ylabel(r'$y$ [m]')
-plt.colorbar()
+cbar = plt.colorbar()
+cbar.formatter.set_powerlimits((0, 0))
 #plt.show()
 plt.savefig('figs/fsrc.png')
 
@@ -104,7 +101,8 @@ plt.title(r'Reshaped source vector, $|\mathbf{b}|$')
 plt.ticklabel_format(axis='both', style='sci', scilimits=(0,0))
 plt.xlabel(r'$x$ [m]')
 plt.ylabel(r'$y$ [m]')
-plt.colorbar()
+cbar = plt.colorbar()
+cbar.formatter.set_powerlimits((0, 0))
 #plt.show()
 plt.savefig('figs/b.png')
 
@@ -124,7 +122,10 @@ plt.title(r'Solution, $E_z(\omega)$')
 plt.ticklabel_format(axis='both', style='sci', scilimits=(0,0))
 plt.xlabel(r'$x$ [m]')
 plt.ylabel(r'$y$ [m]')
-plt.colorbar()
+
+cbar = plt.colorbar()
+cbar.formatter.set_powerlimits((0, 0))
+
 #plt.show()
 plt.savefig('figs/Ez_om.png')
 
@@ -143,7 +144,8 @@ plt.title(r'Solution, $E_z(2\omega)$')
 plt.ticklabel_format(axis='both', style='sci', scilimits=(0,0))
 plt.xlabel(r'$x$ [m]')
 plt.ylabel(r'$y$ [m]')
-plt.colorbar()
+cbar = plt.colorbar()
+cbar.formatter.set_powerlimits((0, 0))
 #plt.show()
 plt.savefig('figs/Ez_2om.png')
 
@@ -176,14 +178,14 @@ plt.savefig('figs/conv-eff.png')
 plt.clf()
 fig, ax = plt.subplots(2)
 #fig.suptitle('Conversion efficiency')
-ax[0].plot(X[600:-50]*1e6, n_om[int(n_om.shape[0]/2), 600:-50])
+ax[0].plot(X[idx1:idx2]*1e6, n_om[int(n_om.shape[0]/2), idx1:idx2])
 ax[0].set_title('Conversion efficiency for first harmonic, $\eta_{\omega}$')
 
-ax[1].plot(X[600:-50]*1e6, n_2om[int(n_om.shape[0]/2), 600:-50])
+ax[1].plot(X[idx1:idx2]*1e6, n_2om[int(n_om.shape[0]/2), idx1:idx2])
 ax[1].set_title('Conversion efficiency for second harmonic, $\eta_{2\omega}$')
 
-ax[0].ticklabel_format(axis='both', style='sci', scilimits=(0,0))
-ax[1].ticklabel_format(axis='both', style='sci', scilimits=(0,0))
+ax[0].ticklabel_format(axis='y', style='sci', scilimits=(0,0))
+ax[1].ticklabel_format(axis='y', style='sci', scilimits=(0,0))
 
 ax[1].set_xlabel(r'Sample length [$\mu$m]')
 

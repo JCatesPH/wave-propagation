@@ -192,7 +192,7 @@ int defineQ(int SFx){
     ierr = VecSet(q, 0.0+1i*0.0);CHKERRQ(ierr);
     for (int i=0; i<NX; i++){
         for (int j=0; j<NY; j++) {
-            if (i < SFx) {
+            if (i < SFx || i > NX - SFx) {
                 ierr = VecSetValue(q, i+j*NX, 1.0+1i*0.0, INSERT_VALUES); CHKERRQ(ierr);
             }
         }

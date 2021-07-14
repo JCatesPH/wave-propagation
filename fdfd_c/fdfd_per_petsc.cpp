@@ -188,18 +188,26 @@ int main (int argc, char **args)
         exit(EXIT_SUCCESS);
     #endif
 
-    // --- Set tolerance and initialize solvers ---
+    // --- Initialize solvers ---
     ierr = KSPCreate(PETSC_COMM_WORLD, &ksp1); CHKERRQ(ierr);
+    // - Set linear operator for Krylov method and method type -
     ierr = KSPSetOperators(ksp1, Ae1, Ae1); CHKERRQ(ierr);
-    ierr = KSPSetType(ksp1, KSPGMRES); CHKERRQ(ierr);
+    ierr = KSPSetType(ksp1, KSPTCQMR); CHKERRQ(ierr);
+    // - Set error tolerances -
     ierr = KSPSetTolerances(ksp1, 1.e-7, 1e-10, PETSC_DEFAULT, PETSC_DEFAULT); CHKERRQ(ierr);
+    // - Sets that GRMES will use iterative refinement for orthogonalization (off by default) -
+    KSPGMRESSetCGSRefinementType(ksp1, KSP_GMRES_CGS_REFINEMENT_IFNEEDED)
     ierr = KSPSetFromOptions(ksp1);CHKERRQ(ierr);
 
     ierr = KSPCreate(PETSC_COMM_WORLD, &ksp2); CHKERRQ(ierr);
-    ierr = KSPSetOperators(ksp2, Ae2, Ae2); CHKERRQ(ierr);
-    ierr = KSPSetType(ksp2, KSPGMRES); CHKERRQ(ierr);
+    // - Set linear operator for Krylov method and method type -
+    ierr = KSPSetOperators(ksp2, Ae1, Ae1); CHKERRQ(ierr);
+    ierr = KSPSetType(ksp2, KSPTCQMR); CHKERRQ(ierr);
+    // - Set error tolerances -
     ierr = KSPSetTolerances(ksp2, 1.e-7, 1e-10, PETSC_DEFAULT, PETSC_DEFAULT); CHKERRQ(ierr);
-    ierr = KSPSetFromOptions(ksp2); CHKERRQ(ierr);
+    // - Sets that GRMES will use iterative refinement for orthogonalization (off by default) -
+    KSPGMRESSetCGSRefinementType(ksp2, KSP_GMRES_CGS_REFINEMENT_IFNEEDED)
+    ierr = KSPSetFromOptions(ksp2);CHKERRQ(ierr);
 
     // ----- Initial solution found.
     // ------------------------------
@@ -246,8 +254,9 @@ int main (int argc, char **args)
     
     PetscPrintf(MPI_COMM_WORLD,"\nEntering loop.. \n\n");
     double resnorm;
+    int its;
     // --- Main loop of iterations ---
-    for (int i = 0; i < 2; i++){
+    for (int i = 0; i < 3; i++){
         // --- Make copy for checking norm. ---
         VecCopy(ez_1, ez_11);
 
@@ -269,15 +278,18 @@ int main (int argc, char **args)
         ierr = KSPSolve(ksp1, b_SFTF, ez_1); CHKERRQ(ierr);
         //ierr = KSPView(ksp1, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
 
-        PetscPrintf(MPI_COMM_WORLD,"  System solved. Finding b_NL2.\n");
+        KSPGetIterationNumber(ksp1, &its);
+        PetscPrintf(MPI_COMM_WORLD,"  System solved in %d iterations. Finding b_NL2.\n", its);
 
         // --- Computes: b_{NL,2\omega} = -d_{33} e_{z,\omega} \times e_{z,\omega}
         VecPointwiseMult(b_NL2, ez_1, ez_1);
         VecScale(b_NL2, -d33);
 
-        for (int j = 0; j < NY; j++){
-            for (int i = 0; i < idx1; i++){
-                ierr = VecSetValue(b_NL2, i+j*NX, 0.0, INSERT_VALUES); CHKERRQ(ierr);
+        for (int i=0; i<NX; i++){
+            for (int j=0; j<NY; j++) {
+                if (i < idx1 || i > idx2) {
+                    ierr = VecSetValue(b_NL2, i+j*NX, 0.0, INSERT_VALUES); CHKERRQ(ierr);
+                }
             }
         }
 
@@ -290,26 +302,30 @@ int main (int argc, char **args)
         //ierr = KSPView(ksp2, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
 
         // --- Computes: b_{NL,\omega} = -2 d_{33} e_{z,2\omega} \times e_{z,\omega}^*
-        PetscPrintf(MPI_COMM_WORLD,"  System solved. Finding b_NL1.\n");
+        KSPGetIterationNumber(ksp2, &its);
+        PetscPrintf(MPI_COMM_WORLD,"  System solved in %d iterations. Finding b_NL1.\n", its);
+
         VecCopy(ez_1, ez_1cc);
         VecConjugate(ez_1cc);
         VecPointwiseMult(b_NL1, ez_2, ez_1cc);
         VecScale(b_NL1, -2*d33);
 
-        for (int j = 0; j < NY; j++){
-            for (int i = 0; i < idx1; i++){
-                ierr = VecSetValue(b_NL1, i+j*NX, 0.0, INSERT_VALUES); CHKERRQ(ierr);
+        for (int i=0; i<NX; i++){
+            for (int j=0; j<NY; j++) {
+                if (i < idx1 || i > idx2) {
+                    ierr = VecSetValue(b_NL1, i+j*NX, 0.0, INSERT_VALUES); CHKERRQ(ierr);
+                }
             }
         }
 
         // --- Check residual norm ---
         VecAXPY(ez_11, -1.0, ez_1);
-        ierr = VecNorm(ez_11, NORM_INFINITY, &resnorm);
-        PetscPrintf(PETSC_COMM_WORLD,"L_inf Norm of residual om:  %.3e\n", resnorm);
+        ierr = VecNorm(ez_11, NORM_2, &resnorm);
+        PetscPrintf(PETSC_COMM_WORLD,"L2 Norm of residual om:  %.3e\n", resnorm);
 
         VecAXPY(ez_21, -1.0, ez_2);
-        ierr = VecNorm(ez_21, NORM_INFINITY, &resnorm);
-        PetscPrintf(PETSC_COMM_WORLD,"L_inf Norm of residual 2om: %.3e\n", resnorm);
+        ierr = VecNorm(ez_21, NORM_2, &resnorm);
+        PetscPrintf(PETSC_COMM_WORLD,"L2 Norm of residual 2om: %.3e\n", resnorm);
     }
     
     
